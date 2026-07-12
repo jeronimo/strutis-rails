@@ -23,6 +23,7 @@ group :development, :test do
   gem 'brakeman', require: false
   gem 'rubocop-rails-omakase', require: false
   gem 'rspec-rails'
+  gem 'haml-lint'
 end
 
 group :development do
