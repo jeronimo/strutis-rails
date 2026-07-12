@@ -88,8 +88,9 @@ production:
   primary: &primary_production
     <<: *default
     database: strutis_rails_production
+    host: <%= ENV["DB_HOST"] %>
     username: strutis_rails
-    password: <%= ENV["STRUTIS_RAILS_DATABASE_PASSWORD"] %>
+    password: <%= ENV["POSTGRES_PASSWORD"] %>
   cache:
     <<: *primary_production
     database: strutis_rails_production_cache
