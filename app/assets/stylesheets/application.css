@@ -8,3 +8,7 @@
  *
  * Consider organizing styles into separate files for maintainability.
  */
+
+.logo-half {
+  transform: scale(0.3);
+}
