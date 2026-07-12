@@ -16,7 +16,6 @@ servers:
         - strutis.ai
         - www.strutis.ai
       ssl: true
-      app_port: 3000
 
 # Where you keep your container images.
 registry:
@@ -55,6 +54,7 @@ asset_path: /rails/public/assets
 # Configure the image builder.
 builder:
   arch: amd64
+  remote: ssh://strutis@178.104.155.110
 
 # Use a different ssh user than root
 ssh:
@@ -65,7 +65,7 @@ accessories:
   db:
     image: postgres:17
     host: 178.104.155.110
-    port: "5432:5432"
+    port: "127.0.0.1:5432:5432"
     env:
       clear:
         POSTGRES_DB: strutis_rails_production
