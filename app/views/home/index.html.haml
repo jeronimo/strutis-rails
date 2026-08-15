@@ -1,2 +1,4 @@
-.d-flex.vh-100.justify-content-center.align-items-center
-  = image_tag 'logo.webp', alt: 'Strutis', class: 'img-fluid logo-half'
+.d-flex.vh-100.justify-content-center.align-items-center.flex-column
+  = image_tag 'logo.webp', alt: 'Strutis', class: 'logo-half'
+  #latency-data{ 'data-controller' => 'latency', 'class' => 'ml-auto mr-auto mt-3' }
+    %span{ 'data-latency-target' => 'label' } Loading...

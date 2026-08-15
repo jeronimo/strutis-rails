@@ -10,5 +10,10 @@
  */
 
 .logo-half {
-  transform: scale(0.3);
+  height: 141px;
+  object-fit: contain;
+}
+
+#latency-data {
+  font-family: var(--bs-font-monospace);
 }
