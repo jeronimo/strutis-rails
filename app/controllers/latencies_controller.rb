@@ -13,7 +13,7 @@ class LatenciesController < ApplicationController
 
       render json: { latency: latency_ms }
     rescue StandardError => e
-      render json: { latency: nil, error: e.message }, status: 500
+      render json: { latency: nil, error: 'Hiding' }, status: 500
     end
   end
 end
