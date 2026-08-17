@@ -11,8 +11,8 @@
       rel: 'stylesheet', crossorigin: 'anonymous',
       integrity: 'sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB',
     }
-    = stylesheet_link_tag 'admins', 'data-turbo-track': 'reload'
-    = javascript_importmap_tags 'admins'
+    = stylesheet_link_tag 'admin', 'data-turbo-track': 'reload'
+    = isolated_importmap_tags 'admin'
 
   %body
     .container-fluid
