@@ -1,19 +1,26 @@
-%h1 User
+%h5 User
 
-%dl
-  %dt ID
-  %dd= @user.id
-  %dt Email
-  %dd= @user.email
-  %dt Sign In Count
-  %dd= @user.sign_in_count
-  %dt Created At
-  %dd= l(@user.created_at, format: :long)
-  %dt Updated At
-  %dd= l(@user.updated_at, format: :long)
+%table.table
+  %tbody
+    %tr
+      %td ID
+      %td= @user.id
+    %tr
+      %td Email
+      %td= @user.email
+    %tr
+      %td Authentication Token
+      %td= @user.authentication_token
+    %tr
+      %td Sign In Count
+      %td= @user.sign_in_count
+    %tr
+      %td Created At
+      %td= l(@user.created_at, format: :long)
+    %tr
+      %td Updated At
+      %td= l(@user.updated_at, format: :long)
 
-%hr
-
-= link_to 'Back', admins_users_path, class: 'btn btn-secondary'
-= link_to 'Edit', edit_admins_user_path(@user), class: 'btn btn-primary'
-= link_to 'Destroy', admins_user_path(@user), method: :delete, data: { confirm: 'Are you sure?' }, class: 'btn btn-danger'
+= link_to 'Back', admins_users_path, class: 'btn btn-sm btn-secondary'
+= link_to 'Edit', edit_admins_user_path(@user), class: 'btn btn-sm btn-primary'
+= link_to 'Destroy', admins_user_path(@user), method: :delete, data: { confirm: 'Are you sure?' }, class: 'btn btn-sm btn-danger'
