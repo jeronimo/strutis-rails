@@ -1,0 +1,12 @@
+%h5 Admin Dashboard
+
+%h6 Stats
+%ul.list-unstyled
+  %li Total Users: #{ @total_users}
+
+%h6 Recent Users
+- @users.each do |user|
+  .media
+    .media-body
+      %h6= user.email
+      %small.text-muted Signed up: #{ l(user.created_at, format: :short)}

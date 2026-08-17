@@ -1,6 +1,18 @@
 Rails.application.routes.draw do
-  devise_for :admins
-  # Define your application routes per the DSL in https://guides.rubyonrails.org/routing.html
+  devise_for :users, case_insensitive_keys: [ :email ], strip_whitespace_keys: [ :email ], authentication_keys: [ :email, :token ]
+  devise_for :admins, path: 'admin',
+    controllers: {
+      sessions: 'devise/admins/sessions',
+      passwords: 'devise/admins/passwords'
+    },
+    skip: %i[confirmations registrations unlocks omniauth_callbacks],
+    sign_out_via: :delete
+
+  namespace :admins, path: 'admin' do
+    resources :users
+    get 'dashboard', to: 'dashboard#index'
+    root 'dashboard#index'
+  end
 
   # Reveal health status on /up that returns 200 if the app boots with no exceptions, otherwise 500.
   # Can be used by load balancers and uptime monitors to verify that the app is live.

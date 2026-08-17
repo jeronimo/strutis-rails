@@ -1,0 +1,29 @@
+%h5 Users
+
+- if @users.empty?
+  %p.text-muted No users found.
+- else
+  %p.text-muted Found #{@users.count} user(s)
+
+%table.table
+  %thead
+    %tr
+      %th ID
+      %th Email
+      %th Sign In Count
+      %th Created At
+      %th Actions
+  %tbody
+    - @users.each do |user|
+      %tr
+        %td= user.id
+        %td= user.email
+        %td= user.sign_in_count
+        %td= l(user.created_at, format: :short)
+        %td
+          = link_to 'Show', admins_user_path(user), class: 'btn btn-sm btn-primary'
+          = link_to 'Edit', edit_admins_user_path(user), class: 'btn btn-sm btn-outline-primary'
+          = link_to 'Destroy', admins_user_path(user), method: :delete, data: { turbo_method: :delete, turbo_confirm: 'Are you sure?' },
+            class: 'btn btn-sm btn-danger'
+
+= link_to 'New User', new_admins_user_path, class: 'btn btn-success'

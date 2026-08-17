@@ -1,0 +1,22 @@
+%h1 New User
+
+= form_with model: [ :admins, @user ], url: admins_users_path do |f|
+  - if @user.errors.any?
+    .alert.alert-danger
+      %h4= pluralize(@user.errors.count, 'error') + ' prohibited this user from being saved:'
+      %ul
+        - @user.errors.full_messages.each do |message|
+          %li= message
+
+  = f.label :email, class: 'form-label mb-1'
+  = f.email_field :email, class: 'form-control', required: true
+
+  = f.label :password, class: 'form-label mb-1'
+  = f.password_field :password, class: 'form-control', required: true
+
+  = f.label :password_confirmation, class: 'form-label mb-1'
+  = f.password_field :password_confirmation, class: 'form-control', required: true
+
+  .mt-2
+    = f.submit 'Create', class: 'btn btn-primary'
+    = link_to 'Cancel', admins_users_path, class: 'btn btn-secondary'

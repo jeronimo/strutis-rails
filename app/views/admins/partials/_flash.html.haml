@@ -1,0 +1,2 @@
+- flash.each do |key, message|
+  .alert{ class: "alert-#{key == 'notice' ? 'success' : 'danger'}" }= message
