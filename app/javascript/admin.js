@@ -1,2 +1,2 @@
-// Admin import map entry point
+import "bootstrap"
 import "@hotwired/turbo-rails"

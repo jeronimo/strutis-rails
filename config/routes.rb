@@ -2,8 +2,8 @@ Rails.application.routes.draw do
   devise_for :users, case_insensitive_keys: [ :email ], strip_whitespace_keys: [ :email ], authentication_keys: [ :email, :token ]
   devise_for :admins, path: 'admin',
     controllers: {
-      sessions: 'devise/admins/sessions',
-      passwords: 'devise/admins/passwords'
+      sessions: 'admins/devise/sessions',
+      passwords: 'admins/devise/passwords'
     },
     skip: %i[confirmations registrations unlocks omniauth_callbacks],
     sign_out_via: :delete
