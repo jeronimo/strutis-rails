@@ -8,23 +8,27 @@
       gtag('js', new Date());
       gtag('config', 'G-PJFNYWD3ZZ');
 
-    %title= content_for(:title) || 'Strutis'
+    %title Strutis
     %meta{ name: 'viewport', content: 'width=device-width,initial-scale=1' }
-    %meta{ name: 'apple-mobile-web-app-capable', content: 'yes' }
-    %meta{ name: 'application-name', content: 'Strutis' }
-    %meta{ name: 'mobile-web-app-capable', content: 'yes' }
     = csrf_meta_tags
     = csp_meta_tag
 
     = yield :head
 
-    = favicon_link_tag 'favicon-64x64.png'
-
     = stylesheet_link_tag 'bootstrap/bootstrap', 'data-turbo-track': 'reload'
-    = stylesheet_link_tag 'bootstrap/custom', 'data-turbo-track': 'reload'
+    = stylesheet_link_tag 'bootstrap/custom'
     = stylesheet_link_tag 'application', 'data-turbo-track': 'reload'
     = isolated_importmap_tags 'application'
 
   %body
-    .container
-      = yield
+    .container-fluid
+      .row
+        .col-md-2
+          %nav.navflex.flex-column.mt-3
+            %h5.text-muted.d-flex.align-items-center.mb-4
+              %span Strutis
+            = link_to 'New Chat', new_chat_path, class: 'nav-link'
+            %hr
+              = link_to 'Sign Out', destroy_user_session_path, class: 'nav-link', data: { turbo_method: :delete }
+        .col-md-10.mt-3
+          = yield

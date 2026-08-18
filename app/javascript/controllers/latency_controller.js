@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["label"]
+  static targets = ["label", "testBtn", "authFormContainer"]
   static values = { interval: { type: Number, default: 500 } }
 
   connect() {
@@ -29,6 +29,18 @@ export default class extends Controller {
     } catch (error) {
       this.labelTarget.textContent = `Error: ${error.message}`
       this.labelTarget.style.color = 'red'
+    }
+  }
+
+  toggleAuthForm() {
+    const showForm = this.authFormContainerTarget.classList.contains('d-none')
+
+    if (showForm) {
+      this.authFormContainerTarget.classList.remove('d-none')
+      this.testBtnTarget.classList.add('d-none')
+    } else {
+      this.authFormContainerTarget.classList.add('d-none')
+      this.testBtnTarget.classList.remove('d-none')
     }
   }
 }

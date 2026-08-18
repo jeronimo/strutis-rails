@@ -3,6 +3,11 @@
   object-fit: contain;
 }
 
+.chat-textarea {
+  width: 100%;
+  max-width: 90%;
+}
+
 #latency-data {
   font-family: var(--bs-font-monospace);
 }

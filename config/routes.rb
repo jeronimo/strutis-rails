@@ -1,5 +1,6 @@
 Rails.application.routes.draw do
-  devise_for :users, case_insensitive_keys: [ :email ], strip_whitespace_keys: [ :email ], authentication_keys: [ :email, :token ]
+  devise_for :users, case_insensitive_keys: [ :email ], strip_whitespace_keys: [ :email ], authentication_keys: [ :email, :token ],
+    controllers: { sessions: 'users/devise/sessions' }
   devise_for :admins, path: 'admin',
     controllers: {
       sessions: 'admins/devise/sessions',
@@ -19,6 +20,8 @@ Rails.application.routes.draw do
   get 'up' => 'rails/health#show', as: :rails_health_check
 
   get 'latency' => 'latencies#show'
+
+  resources :chats, only: [ :new ]
 
   # Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
   # get "manifest" => "rails/pwa#manifest", as: :pwa_manifest

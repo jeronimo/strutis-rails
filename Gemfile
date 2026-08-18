@@ -14,6 +14,7 @@ gem 'solid_queue'
 gem 'solid_cache'
 gem 'solid_cable'
 gem 'devise'
+gem 'devise-token_authenticatable'
 gem 'haml'
 gem 'haml-rails'
 
@@ -24,6 +25,7 @@ group :development, :test do
   gem 'rubocop-rails-omakase', require: false
   gem 'rspec-rails'
   gem 'haml-lint'
+  gem 'pry'
 end
 
 group :development do

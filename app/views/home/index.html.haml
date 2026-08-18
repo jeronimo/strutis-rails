@@ -1,4 +1,10 @@
-.d-flex.vh-100.justify-content-center.align-items-center.flex-column
-  = image_tag 'logo.webp', alt: 'Strutis', class: 'logo-half'
-  #latency-data{ 'data-controller' => 'latency', 'class' => 'ml-auto mr-auto mt-3' }
-    %span{ 'data-latency-target' => 'label' } Loading...
+.text-center.my-5{ 'data-controller' => 'latency' }
+  = image_tag 'logo.webp', alt: 'Strutis', class: 'logo-half mt-5'
+  #latency-data{ 'data-latency-target' => 'label' } Loading...
+
+  .row.justify-content-center.mt-3
+    .col-12.col-md-6
+      %button.btn.btn-primary.w-100.m-2{ 'data-action' => 'click->latency#toggleAuthForm', 'data-latency-target' => 'testBtn' } Test
+
+      = turbo_frame_tag 'auth_form', class: 'd-none', data: { latency_target: 'authFormContainer' } do
+        = render 'users/devise/sessions/token_form'
