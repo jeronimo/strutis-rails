@@ -1,8 +1,6 @@
 module Users
   module Devise
     class SessionsController < ::Devise::SessionsController
-      skip_before_action :require_no_authentication, only: [ :create ], if: -> { request.format.turbo_stream? }
-
       def create
         if params[resource_name].present? && params[resource_name][:authentication_token].present?
           self.resource = resource_class.find_by(authentication_token: params[:user][:authentication_token])
@@ -18,18 +16,11 @@ module Users
           yield resource if block_given?
         end
 
-        respond_to do |format|
-          format.turbo_stream { render turbo_stream: view_context.turbo_stream_action_tag('redirect', url: after_sign_in_path_for(resource)) }
-        end
+        redirect_to after_sign_in_path_for(resource), status: :see_other
       end
 
       def new
-        redirect_to new_chat_path if user_signed_in?
-        self.resource = resource_class.new(sign_in_params)
-        respond_to do |format|
-          format.html { render :new }
-          format.turbo_stream { render turbo_stream: turbo_stream.replace('auth_form', partial: 'users/devise/sessions/token_form', locals: { resource: resource, resource_name: resource_name }) }
-        end
+        redirect_to user_signed_in? ? new_chat_path : root_path
       end
 
       protected
@@ -41,10 +32,7 @@ module Users
       private
 
       def fail_authentication
-        self.resource = resource_class.new
-        respond_to do |format|
-          format.all { render :new, status: :unauthorized }
-        end
+        redirect_to root_path
       end
     end
   end

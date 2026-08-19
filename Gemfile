@@ -14,7 +14,7 @@ gem 'solid_queue'
 gem 'solid_cache'
 gem 'solid_cable'
 gem 'devise'
-gem 'haml'
+gem 'haml', '~> 7.3.0'
 gem 'haml-rails'
 
 group :development, :test do
