@@ -6,6 +6,16 @@
 .chat-textarea {
   width: 100%;
   max-width: 90%;
+  resize: none;
+  min-height: 80px;
+}
+
+.white-space-pre-wrap {
+  white-space: pre-wrap;
+}
+
+.select-model-width {
+  max-width: 250px;
 }
 
 #latency-data {

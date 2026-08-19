@@ -1,0 +1,23 @@
+:ruby
+  messages = local_assigns[:messages] || []
+  models = local_assigns[:models] || []
+  current_model = local_assigns[:current_model]
+  conversation_id = local_assigns[:conversation_id]
+
+= turbo_frame_tag 'chat_frame' do
+  = turbo_frame_tag 'messages' do
+    - messages.each do |message|
+      = render 'chats/_message', role: message[:role], content: message[:content]
+
+  = form_with url: chats_path, method: :post, data: { turbo_frame: '_self', controller: 'chat' } do
+    .d-flex.flex-column.gap-2.my-3
+      = text_area_tag :message, '',
+        rows: 3,
+        placeholder: 'Enter your message... (Press Enter to send)',
+        class: 'form-control chat-textarea',
+        id: 'chat-textarea',
+        'data-chat-target': 'textarea'
+    .d-flex.align-items-center.gap-2
+      = select_tag :model, options_for_select(models, current_model), class: 'form-select select-model-width', 'data-chat-target': 'model'
+      - if conversation_id
+        %small.text-muted Conversation: ##{conversation_id.to_s[0..7]}...
