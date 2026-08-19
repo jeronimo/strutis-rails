@@ -1,5 +1,5 @@
 Rails.application.routes.draw do
-  devise_for :users, case_insensitive_keys: [ :email ], strip_whitespace_keys: [ :email ], authentication_keys: [ :email, :token ],
+  devise_for :users, case_insensitive_keys: [ :email ], strip_whitespace_keys: [ :email ],
     controllers: { sessions: 'users/devise/sessions' }
   devise_for :admins, path: 'admin',
     controllers: {

@@ -4,7 +4,8 @@ import "controllers"
 
 // Custom Turbo Stream action for redirect
 Turbo.StreamActions.redirect = function() {
-  Turbo.visit(this.target)
+  var url = this.getAttribute('url') || this.textContent.trim();
+  Turbo.visit(url);
 }
 
 // Handle 401 responses from login form - redirect to home

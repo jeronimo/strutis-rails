@@ -14,7 +14,6 @@ gem 'solid_queue'
 gem 'solid_cache'
 gem 'solid_cable'
 gem 'devise'
-gem 'devise-token_authenticatable'
 gem 'haml'
 gem 'haml-rails'
 

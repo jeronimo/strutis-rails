@@ -38,15 +38,15 @@ Devise.setup do |config|
   # available as additional gems.
   require 'devise/orm/active_record'
 
-    # ==> Configuration for any authentication mechanism
-    # Configure which keys are used when authenticating a user. The default is
-    # just :email. You can configure it to use [:username, :subdomain], so for
-    # authenticating a user, both parameters are required. Remember that those
-    # parameters are used only when authenticating and not when retrieving from
-    # session. If you need permissions, you should implement that in a before filter.
-    # You can also supply a hash where the value is a boolean determining whether
-    # or not authentication should be aborted when the value is not present.
-    config.authentication_keys = [ :email, :authentication_token ]
+     # ==> Configuration for any authentication mechanism
+     # Configure which keys are used when authenticating a user. The default is
+     # just :email. You can configure it to use [:username, :subdomain], so for
+     # authenticating a user, both parameters are required. Remember that those
+     # parameters are used only when authenticating and not when retrieving from
+     # session. If you need permissions, you should implement that in a before filter.
+     # You can also supply a hash where the value is a boolean determining whether
+     # or not authentication should be aborted when the value is not present.
+     config.authentication_keys = [ :email ]
 
     # Configure parameters from the request object used for authentication. Each entry
     # given should be a request method and it will automatically be passed to the
@@ -59,7 +59,6 @@ Devise.setup do |config|
     # These keys will be downcased upon creating or modifying a user and when used
     # to authenticate or find a user. Default is :email.
     config.case_insensitive_keys = [ :email ]
-   # config.authentication_keys = [ :email, :token ]
 
    # Configure which authentication keys should have whitespace stripped.
    # These keys will have whitespace before and after removed upon creating or
@@ -275,49 +274,42 @@ Devise.setup do |config|
   # The default HTTP method used to sign out a resource. Default is :delete.
   config.sign_out_via = :delete
 
-  # ==> OmniAuth
-  # Add a new OmniAuth provider. Check the wiki for more information on setting
-  # up on your models and hooks.
-  # config.omniauth :github, 'APP_ID', 'APP_SECRET', scope: 'user,public_repo'
+   # ==> OmniAuth
+   # Add a new OmniAuth provider. Check the wiki for more information on setting
+   # up on your models and hooks.
+   # config.omniauth :github, 'APP_ID', 'APP_SECRET', scope: 'user,public_repo'
 
-  # ==> Warden configuration
-  # If you want to use other strategies, that are not supported by Devise, or
-  # change the failure app, you can configure them inside the config.warden block.
-  #
-  # config.warden do |warden_config|
-  #   warden_config.intercept_401 = false
-  #   warden_config.default_strategies(scope: :user).unshift :some_external_strategy
-  # end
+   # ==> Warden configuration
+   # If you want to use other strategies, that are not supported by Devise, or
+   # change the failure app, you can configure them inside the config.warden block.
+   #
+   # config.warden do |warden_config|
+   #   warden_config.intercept_401 = false
+   #   warden_config.default_strategies(scope: :user).unshift :some_external_strategy
+   # end
 
-  # ==> Mountable engine configurations
-  # When using Devise inside an engine, let's call it `MyEngine`, and this engine
-  # is mountable, there are some extra configurations to be taken into account.
-  # The following options are available, assuming the engine is mounted as:
-  #
-  #     mount MyEngine, at: '/my_engine'
-  #
-  # The router that invoked `devise_for`, in the example above, would be:
-  # config.router_name = :my_engine
-  #
-  # When using OmniAuth, Devise cannot automatically set OmniAuth path,
-  # so you need to do it manually. For the users scope, it would be:
-  # config.omniauth_path_prefix = '/my_engine/users/auth'
+   # ==> Mountable engine configurations
+   # When using Devise inside an engine, let's call it `MyEngine`, and this engine
+   # is mountable, there are some extra configurations to be taken into account.
+   # The following options are available, assuming the engine is mounted as:
+   #
+   #     mount MyEngine, at: '/my_engine'
+   #
+   # The router that invoked `devise_for`, in the example above, would be:
+   # config.router_name = :my_engine
+   #
+   # When using OmniAuth, Devise cannot automatically set OmniAuth path,
+   # so you need to do it manually. For the users scope, it would be:
+   # config.omniauth_path_prefix = '/my_engine/users/auth'
 
-  # ==> Hotwire/Turbo configuration
-  # When using Devise with Hotwire/Turbo, the http status for error responses
-  # and some redirects must match the following. The default in Devise for existing
-  # apps is `200 OK` and `302 Found` respectively, but new apps are generated with
-  # these new defaults that match Hotwire/Turbo behavior.
-  # Note: These might become the new default in future versions of Devise.
-  config.responder.error_status = :unprocessable_content
-  config.responder.redirect_status = :see_other
-
-  # ==> Token authentication configuration
-  # config.http_authenticatable = [ :token ]
-  # Configure token authentication key to match database field
-  Devise::TokenAuthenticatable.setup do |t_config|
-    t_config.token_authentication_key = :authentication_token
-  end
+   # ==> Hotwire/Turbo configuration
+   # When using Devise with Hotwire/Turbo, the http status for error responses
+   # and some redirects must match the following. The default in Devise for existing
+   # apps is `200 OK` and `302 Found` respectively, but new apps are generated with
+   # these new defaults that match Hotwire/Turbo behavior.
+   # Note: These might become the new default in future versions of Devise.
+   config.responder.error_status = :unprocessable_content
+   config.responder.redirect_status = :see_other
 
   # ==> Configuration for :registerable
 
