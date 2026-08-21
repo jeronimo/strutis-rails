@@ -6,7 +6,9 @@ class LatenciesController < ApplicationController
     begin
       start_time = Time.now.to_f
 
-      url = URI('http://10.10.10.10:8000/health')
+      host = Rails.application.credentials.dig(:openai_api, :host)
+      port = Rails.application.credentials.dig(:openai_api, :port)
+      url = URI("http://#{host}:#{port}/health")
       response = Net::HTTP.get_response(url)
 
       latency_ms = ((Time.now.to_f - start_time) * 1000).round
