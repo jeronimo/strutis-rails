@@ -4,6 +4,8 @@ class User < ApplicationRecord
   devise :database_authenticatable, :registerable,
          :recoverable, :rememberable, :validatable, :trackable, :timeoutable, :lockable
 
+  has_many :conversations, dependent: :destroy
+
   def self.find_for_authentication(conditions)
     if conditions[:authentication_token].present?
       find_by(authentication_token: conditions[:authentication_token])

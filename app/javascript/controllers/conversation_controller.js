@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["textarea", "model"]
+  static targets = ["textarea", "model", "conversationId", "label"]
 
   connect() {
     this.textareaTarget.addEventListener('input', this.resizeTextarea.bind(this))
@@ -48,6 +48,9 @@ export default class extends Controller {
     const formData = new FormData()
     formData.append('message', message)
     formData.append('model', this.modelTarget.value)
+    if (this.hasConversationIdTarget && this.conversationIdTarget.value) {
+      formData.append('conversation_public_id', this.conversationIdTarget.value)
+    }
 
     const form = this.element.closest('form')
     const url = form.action
@@ -66,12 +69,22 @@ export default class extends Controller {
         return
       }
 
+      if (data.conversation_id) {
+        if (this.hasConversationIdTarget) {
+          this.conversationIdTarget.value = data.conversation_id
+        }
+        if (this.hasLabelTarget) {
+          this.labelTarget.textContent = `Conversation: #${data.conversation_id.slice(0, 8)}...`
+        }
+        history.pushState({}, '', `/conversations/${data.conversation_id}`)
+      }
+
       if (messagesContainer) {
         const aiMsg = document.createElement('div')
         aiMsg.className = 'row mb-3'
         aiMsg.innerHTML = `
           <div class="col-2"><strong class="text-success">AI</strong></div>
-          <div class="col-10"><div class="p-2 rounded bg-light white-space-pre-wrap">${this.escapeHtml(data.response)}</div></div>
+          <div class="col-10"><div class="p-2 rounded bg-light white-space-pre-wrap">${this.escapeHtml(data.response.trim())}</div></div>
         `
         messagesContainer.appendChild(aiMsg)
         messagesContainer.scrollTop = messagesContainer.scrollHeight
