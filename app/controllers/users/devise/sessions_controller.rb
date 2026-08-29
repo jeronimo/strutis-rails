@@ -20,13 +20,13 @@ module Users
       end
 
       def new
-        redirect_to user_signed_in? ? new_chat_path : root_path
+        redirect_to user_signed_in? ? new_conversation_path : root_path
       end
 
       protected
 
       def after_sign_in_path_for(_resource)
-        new_chat_path
+        new_conversation_path
       end
 
       private

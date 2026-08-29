@@ -3,7 +3,7 @@
   object-fit: contain;
 }
 
-.chat-textarea {
+.conversation-textarea {
   width: 100%;
   max-width: 90%;
   resize: none;

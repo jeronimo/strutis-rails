@@ -1,4 +1,4 @@
-class ChatsController < ApplicationController
+class ConversationsController < ApplicationController
   layout 'user'
   before_action :authenticate_user!
 
@@ -26,7 +26,7 @@ class ChatsController < ApplicationController
     end
 
     begin
-      Rails.logger.info "[Chats#create] session[:current_conversation_id] = #{session[:current_conversation_id].inspect}"
+      Rails.logger.info "[Conversations#create] session[:current_conversation_id] = #{session[:current_conversation_id].inspect}"
       conversation_id = session[:current_conversation_id]
       conversation_data = session[:conversations] && session[:conversations][conversation_id]
       messages = conversation_data && conversation_data[:messages] || []
@@ -37,11 +37,11 @@ class ChatsController < ApplicationController
 
       ai_content = result[:response]
       conversation_id = result[:conversation_id]
-      Rails.logger.info "[Chats#create] API returned conversation_id = #{conversation_id.inspect}"
+      Rails.logger.info "[Conversations#create] API returned conversation_id = #{conversation_id.inspect}"
       messages << { role: 'assistant', content: ai_content }
       session[:conversations] ||= {}
       session[:current_conversation_id] = conversation_id
-      Rails.logger.info "[Chats#create] Stored session[:current_conversation_id] = #{session[:current_conversation_id].inspect}"
+      Rails.logger.info "[Conversations#create] Stored session[:current_conversation_id] = #{session[:current_conversation_id].inspect}"
       session[:current_model] = model
         session[:conversations][conversation_id] = {
           messages: messages,
