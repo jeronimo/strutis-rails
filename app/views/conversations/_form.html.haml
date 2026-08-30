@@ -10,10 +10,13 @@
   = form_with url: conversations_path, method: :post, html: { id: 'conversation-form' },
     data: { conversation_target: 'form', action: 'turbo:submit-start->conversation#disableForm turbo:submit-end->conversation#handleSubmitEnd' } do
     = render 'conversations/conversation_hidden_fields', conversation: conversation
-    .d-flex.flex-column.gap-2.my-3
-      = text_area_tag :message, '', rows: 3, placeholder: 'Enter your message... (Press Enter to send)',
-        class: 'form-control conversation-textarea', id: 'conversation-textarea', required: true,
-        'data-conversation-target': 'textarea', 'data-action': 'keydown->conversation#handleKeyDown'
-    .d-flex.align-items-center.gap-2
-      = select_tag :model, options_for_select(models, current_model), class: 'form-select select-model-width', required: true
-      = submit_tag 'Send', class: 'btn btn-primary', 'data-conversation-target': 'submit'
+    .row.mb-3
+      .col-1
+      .col-11
+        .d-flex.flex-column.gap-2.my-3
+          = text_area_tag :message, '', rows: 3, placeholder: 'Enter your message... (Press Enter to send)',
+            class: 'form-control conversation-textarea', id: 'conversation-textarea', required: true,
+            'data-conversation-target': 'textarea', 'data-action': 'keydown->conversation#handleKeyDown'
+        .d-flex.align-items-center.gap-2
+          = select_tag :model, options_for_select(models, current_model), class: 'form-select select-model-width', required: true
+          = submit_tag 'Send', class: 'btn btn-primary', 'data-conversation-target': 'submit'
