@@ -1,104 +1,65 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["textarea", "model", "conversationId", "label"]
+  static targets = ["textarea", "form", "path", "messages", "submit"]
 
   connect() {
-    this.textareaTarget.addEventListener('input', this.resizeTextarea.bind(this))
-    this.textareaTarget.addEventListener('keydown', this.handleKeyDown.bind(this))
-    this.resizeTextarea()
+    this.mutationObserver = new MutationObserver((mutations) => this.handleMutation(mutations))
+    this.mutationObserver.observe(this.element, { childList: true, subtree: true })
   }
 
-  resizeTextarea() {
-    this.textareaTarget.style.height = 'auto'
-    this.textareaTarget.style.height = this.textareaTarget.scrollHeight + 'px'
+  disconnect() {
+    this.mutationObserver.disconnect()
   }
 
-  handleKeyDown(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
+  handleKeyDown(event) {
+    if (event.key === 'Enter' && !event.shiftKey && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      event.preventDefault()
       this.submitMessage()
     }
   }
 
-  submitMessage() {
-    const message = this.textareaTarget.value.trim()
-    if (!message) return
-
-    if (!this.hasModelTarget || !this.modelTarget.value) {
-      alert('Please select a model')
-      return
-    }
-
-    const messagesContainer = document.getElementById('messages')
-    if (messagesContainer) {
-      const userMsg = document.createElement('div')
-      userMsg.className = 'row mb-3'
-      userMsg.innerHTML = `
-        <div class="col-2"><strong class="text-primary">You</strong></div>
-        <div class="col-10"><div class="p-2 rounded bg-light white-space-pre-wrap">${this.escapeHtml(message)}</div></div>
-      `
-      messagesContainer.appendChild(userMsg)
-      messagesContainer.scrollTop = messagesContainer.scrollHeight
-    }
-
-    this.textareaTarget.value = ''
-    this.resizeTextarea()
-
-    const formData = new FormData()
-    formData.append('message', message)
-    formData.append('model', this.modelTarget.value)
-    if (this.hasConversationIdTarget && this.conversationIdTarget.value) {
-      formData.append('conversation_public_id', this.conversationIdTarget.value)
-    }
-
-    const form = this.element.closest('form')
-    const url = form.action
-
-    fetch(url, {
-      method: 'POST',
-      body: formData,
-      headers: {
-        'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-      }
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.error) {
-        alert(data.error)
-        return
-      }
-
-      if (data.conversation_id) {
-        if (this.hasConversationIdTarget) {
-          this.conversationIdTarget.value = data.conversation_id
-        }
-        if (this.hasLabelTarget) {
-          this.labelTarget.textContent = `Conversation: #${data.conversation_id.slice(0, 8)}...`
-        }
-        history.pushState({}, '', `/conversations/${data.conversation_id}`)
-      }
-
-      if (messagesContainer) {
-        const aiMsg = document.createElement('div')
-        aiMsg.className = 'row mb-3'
-        aiMsg.innerHTML = `
-          <div class="col-2"><strong class="text-success">AI</strong></div>
-          <div class="col-10"><div class="p-2 rounded bg-light white-space-pre-wrap">${this.escapeHtml(data.response.trim())}</div></div>
-        `
-        messagesContainer.appendChild(aiMsg)
-        messagesContainer.scrollTop = messagesContainer.scrollHeight
-      }
-    })
-    .catch(error => {
-      console.error('Error:', error)
-      alert('An error occurred')
-    })
+  disableForm() {
+    this.submitTarget.disabled = true
   }
 
-  escapeHtml(text) {
-    const div = document.createElement('div')
-    div.textContent = text
-    return div.innerHTML
+  handleSubmitEnd(event) {
+    this.submitTarget.disabled = false
+    if (event.detail.success) {
+      this.textareaTarget.value = ''
+    }
+  }
+
+  handleMutation(mutations) {
+    this.updateUrl()
+    if (this.mutationAffectsMessages(mutations)) {
+      this.scrollToLatest()
+    }
+  }
+
+  mutationAffectsMessages(mutations) {
+    if (!this.hasMessagesTarget) return false
+    return mutations.some((mutation) =>
+      mutation.target === this.messagesTarget ||
+      this.messagesTarget.contains(mutation.target) ||
+      mutation.target.contains(this.messagesTarget)
+    )
+  }
+
+  submitMessage() {
+    if (this.submitTarget.disabled || !this.textareaTarget.value.trim()) return
+    this.formTarget.requestSubmit()
+  }
+
+  updateUrl() {
+    if (this.hasPathTarget && this.pathTarget.value) {
+      window.history.replaceState(null, '', this.pathTarget.value)
+    }
+  }
+
+  scrollToLatest() {
+    if (!this.hasMessagesTarget) return
+    const lastMessage = this.messagesTarget.lastElementChild
+    lastMessage?.scrollIntoView({ behavior: 'smooth', block: 'end' })
   }
 }

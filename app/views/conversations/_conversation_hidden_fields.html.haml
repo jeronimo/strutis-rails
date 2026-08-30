@@ -1,0 +1,3 @@
+#conversation-hidden-fields
+  = hidden_field_tag :conversation_public_id, conversation&.public_id
+  = hidden_field_tag :conversation_path, conversation && conversation_path(conversation.public_id), 'data-conversation-target': 'path'

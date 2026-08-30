@@ -3,48 +3,86 @@ class ConversationsController < ApplicationController
   before_action :authenticate_user!
 
   def new
-    @models = OpenaiService.models.map { |m| m[:id] }
+    @models = available_models
     @conversation = nil
-    @messages = []
-    @current_model = @models.first if @models.any?
+    @current_model = @models.first
   end
 
   def show
     @conversation = current_user.conversations.find_by!(public_id: params[:id])
-    @messages = @conversation.messages
-    @models = OpenaiService.models.map { |m| m[:id] }
+    @models = [ @conversation.model, *available_models ].compact.uniq
     @current_model = @conversation.model
   end
 
   def create
-    model = params[:model]
-    message = params[:message]
+    model = create_params[:model].presence
+    message = create_params[:message].presence
+    public_id = create_params[:conversation_public_id].presence
 
-    unless model && message
-      render json: { error: 'Model and message are required' }, status: :bad_request and return
+    if model.blank? || message.blank?
+      render_conversation_error('Model and message are required.', :unprocessable_entity)
+      return
     end
 
-    conversation = find_or_create_conversation(message, model)
-    conversation.update(model: model)
-    conversation.messages.create!(role: 'user', content: message, model: model)
+    conversation = find_or_create_conversation(public_id, message, model)
 
-    api_messages = conversation.messages.map { |m| { role: m.role, content: m.content } }
-    result = OpenaiService.completion(api_messages, model, conversation.public_id)
-    conversation.messages.create!(role: 'assistant', content: result[:response], model: model)
+    if conversation.nil?
+      render_conversation_error('Conversation not found.', :not_found)
+      return
+    end
 
-    render json: { response: result[:response], conversation_id: conversation.public_id }
-  rescue => e
-    render json: { error: e.message }, status: :internal_server_error
+    conversation.update!(model: model)
+    user_message = conversation.messages.create!(role: 'user', content: message, model: model)
+    ConversationCompletionJob.perform_later(conversation.id)
+
+    render_conversation_created(conversation, user_message, new_conversation: public_id.blank?)
   end
 
   private
 
-  def find_or_create_conversation(message, model)
-    public_id = params[:conversation_public_id]
-    if public_id.present?
-      current_user.conversations.find_by!(public_id: public_id)
+  def create_params
+    @create_params ||= params.permit(:model, :message, :conversation_public_id)
+  end
+
+  def find_or_create_conversation(public_id, message, model)
+    if public_id
+      current_user.conversations.find_by(public_id: public_id)
     else
-      current_user.conversations.create!(title: message.strip[0, 60], model: model)
+      current_user.conversations.create!(title: message[0, 60], model: model)
+    end
+  end
+
+  def render_conversation_error(error, status)
+    render turbo_stream: turbo_stream.replace('conversation-error', partial: 'conversations/error', locals: { error: error }), status: status
+  end
+
+  def available_models
+    OpenaiService.models.map { |model| model[:id] }
+  end
+
+  def render_conversation_created(conversation, user_message, new_conversation:)
+    streams = [
+      user_message_stream(conversation, user_message, new_conversation:),
+      conversation_hidden_fields_stream(conversation),
+      turbo_stream.replace('conversation-error', '')
+    ]
+    streams << conversation_list_stream(conversation) if new_conversation
+    render turbo_stream: streams
+  end
+
+  def conversation_hidden_fields_stream(conversation)
+    turbo_stream.replace('conversation-hidden-fields', partial: 'conversations/conversation_hidden_fields', locals: { conversation: })
+  end
+
+  def conversation_list_stream(conversation)
+    turbo_stream.prepend('conversation-list', partial: 'conversations/conversation_link', locals: { conversation: })
+  end
+
+  def user_message_stream(conversation, user_message, new_conversation:)
+    if new_conversation
+      turbo_stream.replace('conversation-messages', partial: 'conversations/messages_container', locals: { conversation:, messages: [ user_message ] })
+    else
+      turbo_stream.append("messages-#{conversation.public_id}", partial: 'conversations/message', locals: { role: user_message.role, content: user_message.content })
     end
   end
 end

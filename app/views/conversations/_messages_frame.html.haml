@@ -1,0 +1,3 @@
+= turbo_frame_tag "messages-#{conversation.public_id}", data: { conversation_target: 'messages' } do
+  - messages.each do |message|
+    = render 'conversations/message', role: message.role, content: message.content

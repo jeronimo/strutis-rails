@@ -8,23 +8,20 @@ class OpenaiService
     @host = creds[:host]
     @port = creds[:port]
     @key = creds[:key]
+    @open_timeout = creds[:open_timeout] || 5
+    @read_timeout = creds[:read_timeout] || 30
   end
 
   def self.models
-    response = request('GET', '/v1/models', nil)
-    response[:body][:data] || []
+    request('GET', '/v1/models', nil)[:data] || []
   end
 
   def self.completion(messages, model, conversation_id = nil)
     request_body = { model: model, messages: messages, stream: false }
     request_body[:conversation_id] = conversation_id if conversation_id
 
-    api_response = request('POST', '/v1/chat/completions', request_body, conversation_id)
-
-    {
-      response: api_response[:body][:choices]&.first&.[](:message)&.[](:content) || '',
-      conversation_id: (api_response[:headers][:"x-conversation-id"] || [ conversation_id ]).first
-    }
+    response = request('POST', '/v1/chat/completions', request_body, conversation_id)
+    response[:choices]&.first&.[](:message)&.[](:content) || ''
   end
 
   private
@@ -33,6 +30,8 @@ class OpenaiService
     configure
     uri = URI("http://#{@host}:#{@port}#{path}")
     http = Net::HTTP.new(uri.host, uri.port)
+    http.open_timeout = @open_timeout
+    http.read_timeout = @read_timeout
 
     request = case method
     when 'GET'
@@ -48,7 +47,7 @@ class OpenaiService
     request['X-Conversation-Id'] = conversation_id if conversation_id
 
     Rails.logger.info "[OpenAI] #{request.method} #{uri.path}"
-    Rails.logger.info "[OpenAI] Request headers: #{request.to_hash.to_json}"
+    Rails.logger.info "[OpenAI] Request headers: #{request.to_hash.except('Authorization').to_json}"
     Rails.logger.info "[OpenAI] Body: #{body&.to_json}"
 
     response = http.request(request)
@@ -61,9 +60,6 @@ class OpenaiService
       raise "OpenAI API error: #{response.code} - #{response.message}"
     end
 
-    {
-      body: JSON.parse(response.body, symbolize_names: true),
-      headers: response.to_hash.each_with_object({}) { |(k, v), h| h[k.to_sym] = v }
-    }
+    JSON.parse(response.body, symbolize_names: true)
   end
 end

@@ -1,24 +1,19 @@
-:ruby
-  messages = local_assigns[:messages] || []
-  models = local_assigns[:models] || []
-  current_model = local_assigns[:current_model]
-  conversation = local_assigns[:conversation]
-  public_id = conversation&.public_id
+.chat-conversation{ data: { controller: 'conversation' } }
+  #conversation-error
 
-= turbo_frame_tag 'conversation_frame' do
-  = turbo_frame_tag 'messages' do
-    - messages.each do |message|
-      = render 'conversations/message', role: message.role, content: message.content
+  #conversation-messages
+    - if conversation
+      = render 'conversations/messages_container', conversation: conversation, messages: conversation.messages
+    - else
+      = turbo_frame_tag 'messages', data: { conversation_target: 'messages' }
 
-  = form_with url: conversations_path, method: :post, data: { turbo_frame: '_self', controller: 'conversation' } do
-    = hidden_field_tag :conversation_public_id, public_id, 'data-conversation-target': 'conversationId'
+  = form_with url: conversations_path, method: :post, html: { id: 'conversation-form' },
+    data: { conversation_target: 'form', action: 'turbo:submit-start->conversation#disableForm turbo:submit-end->conversation#handleSubmitEnd' } do
+    = render 'conversations/conversation_hidden_fields', conversation: conversation
     .d-flex.flex-column.gap-2.my-3
-      = text_area_tag :message, '',
-        rows: 3,
-        placeholder: 'Enter your message... (Press Enter to send)',
-        class: 'form-control conversation-textarea',
-        id: 'conversation-textarea',
-        'data-conversation-target': 'textarea'
+      = text_area_tag :message, '', rows: 3, placeholder: 'Enter your message... (Press Enter to send)',
+        class: 'form-control conversation-textarea', id: 'conversation-textarea', required: true,
+        'data-conversation-target': 'textarea', 'data-action': 'keydown->conversation#handleKeyDown'
     .d-flex.align-items-center.gap-2
-      = select_tag :model, options_for_select(models, current_model), class: 'form-select select-model-width', 'data-conversation-target': 'model'
-      %small.text-muted{ 'data-conversation-target': 'label' }= public_id ? "Conversation: ##{public_id[0..7]}..." : ''
+      = select_tag :model, options_for_select(models, current_model), class: 'form-select select-model-width', required: true
+      = submit_tag 'Send', class: 'btn btn-primary', 'data-conversation-target': 'submit'
