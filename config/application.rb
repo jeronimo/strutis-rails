@@ -23,6 +23,8 @@ module StrutisRails
     # Initialize configuration defaults for originally generated Rails version.
     config.load_defaults 8.1
 
+    config.session_store :cookie_store, key: '_strutis_rails_session', expire_after: 1.month.to_i
+
     # Please, add to the `ignore` list any other `lib` subdirectories that do
     # not contain `.rb` files, or that should not be reloaded or eager loaded.
     # Common ones are `templates`, `generators`, or `middleware`, for example.
