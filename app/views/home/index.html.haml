@@ -4,7 +4,7 @@
 
   .row.justify-content-center.mt-3
     .col-12.col-md-6
-      %button.btn.btn-primary.w-100.m-2{ 'data-action' => 'click->latency#toggleAuthForm', 'data-latency-target' => 'testBtn' } Test
+      %button.btn.btn-primary.w-100.m-2{ 'data-action' => 'click->latency#toggleAuthForm', 'data-latency-target' => 'testBtn' } I have invitation
 
       = turbo_frame_tag 'auth_form', class: 'd-none', data: { latency_target: 'authFormContainer' } do
         = render 'users/devise/sessions/token_form'
