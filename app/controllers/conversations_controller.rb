@@ -86,7 +86,7 @@ class ConversationsController < ApplicationController
   end
 
   def conversation_list_stream(conversation, active:)
-    turbo_stream.insert_after('new-conversation', partial: 'conversations/conversation_link', locals: { conversation:, active: })
+    turbo_stream.after('new-conversation', partial: 'conversations/conversation_link', locals: { conversation:, active: })
   end
 
   def user_message_stream(conversation, user_message, new_conversation:)
