@@ -1,1 +1,4 @@
-= link_to conversation.title.presence || 'Untitled', conversation_path(conversation.public_id), class: 'nav-link'
+- title = conversation.title.presence || 'Untitled'
+.list-group-item.d-flex.align-items-center.gap-2{ id: dom_id(conversation), class: active ? 'active' : nil }
+  = link_to title, conversation_path(conversation.public_id), title: title, class: [ 'flex-grow-1', 'text-truncate', 'text-decoration-none', active && 'text-white' ].compact
+  = button_to '×', conversation_path(conversation.public_id), method: :delete, class: 'btn btn-sm conversation-destroy py-0 px-1', form: { class: 'd-inline', data: { turbo_confirm: 'Delete this conversation?' } }

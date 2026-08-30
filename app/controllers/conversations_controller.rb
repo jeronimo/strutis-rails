@@ -38,6 +38,17 @@ class ConversationsController < ApplicationController
     render_conversation_created(conversation, user_message, new_conversation: public_id.blank?)
   end
 
+  def destroy
+    conversation = current_user.conversations.find_by!(public_id: params[:id])
+    conversation.destroy!
+
+    if request.referer.to_s.end_with?(conversation_path(conversation.public_id))
+      redirect_to new_conversation_path
+    else
+      redirect_back fallback_location: new_conversation_path
+    end
+  end
+
   private
 
   def create_params
@@ -66,7 +77,7 @@ class ConversationsController < ApplicationController
       conversation_hidden_fields_stream(conversation),
       turbo_stream.replace('conversation-error', '')
     ]
-    streams << conversation_list_stream(conversation) if new_conversation
+    streams << conversation_list_stream(conversation, active: new_conversation) if new_conversation
     render turbo_stream: streams
   end
 
@@ -74,8 +85,8 @@ class ConversationsController < ApplicationController
     turbo_stream.replace('conversation-hidden-fields', partial: 'conversations/conversation_hidden_fields', locals: { conversation: })
   end
 
-  def conversation_list_stream(conversation)
-    turbo_stream.prepend('conversation-list', partial: 'conversations/conversation_link', locals: { conversation: })
+  def conversation_list_stream(conversation, active:)
+    turbo_stream.insert_after('new-conversation', partial: 'conversations/conversation_link', locals: { conversation:, active: })
   end
 
   def user_message_stream(conversation, user_message, new_conversation:)

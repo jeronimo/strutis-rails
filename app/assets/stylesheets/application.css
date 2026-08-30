@@ -22,3 +22,8 @@
 #latency-data {
   font-family: var(--bs-font-monospace);
 }
+
+.strutis-logo {
+  height: 1.25rem;
+  width: auto;
+}
