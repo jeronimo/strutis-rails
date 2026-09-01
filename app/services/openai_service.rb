@@ -17,17 +17,76 @@ class OpenaiService
   end
 
   def self.completion(messages, model, conversation_id = nil)
-    request_body = { model: model, messages: messages, stream: false }
+    request_body = { model: model, messages: messages, stream: true }
     request_body[:conversation_id] = conversation_id if conversation_id
 
     timing = {}
-    body = request('POST', '/v1/chat/completions', request_body, conversation_id, timing)
-    { content: body.dig(:choices, 0, :message, :content).to_s, latency_ms: timing[:latency_ms], inference_ms: timing[:inference_ms] }
+    content = +''
+    stream_request('/v1/chat/completions', request_body, conversation_id, timing) do |delta|
+      content << delta
+      yield delta
+    end
+
+    { content: content, latency_ms: timing[:latency_ms], inference_ms: timing[:inference_ms] }
   end
 
   private
 
-  def self.request(method, path, body, conversation_id = nil, timing = nil)
+  def self.request(method, path, body, conversation_id = nil)
+    http, uri, request = build_request(method, path, body, conversation_id)
+    log_request(request, uri, body)
+
+    response = http.request(request)
+
+    log_response(response)
+    raise "OpenAI API error: #{response.code} - #{response.message}" unless response.is_a?(Net::HTTPSuccess)
+
+    JSON.parse(response.body, symbolize_names: true)
+  end
+
+  def self.stream_request(path, body, conversation_id, timing)
+    http, uri, request = build_request('POST', path, body, conversation_id)
+    log_request(request, uri, body)
+
+    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    first_token = nil
+    buffer = +''
+
+    http.request(request) do |response|
+      raise "OpenAI API error: #{response.code} - #{response.message}" unless response.is_a?(Net::HTTPSuccess)
+
+      response.read_body do |chunk|
+        buffer << chunk
+        buffer.gsub!("\r\n", "\n")
+        while (separator = buffer.index("\n\n"))
+          event = buffer[0...separator]
+          buffer = buffer[(separator + 2)..]
+          parse_sse_event(event) do |delta|
+            first_token ||= Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            yield delta
+          end
+        end
+      end
+    end
+
+    finish = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    first_token ||= finish
+    timing[:latency_ms] = ms(finish - start)
+    timing[:inference_ms] = ms(first_token - start)
+  end
+
+  def self.parse_sse_event(event)
+    event.each_line do |line|
+      next unless line.start_with?('data:')
+      data = line[5..].strip
+      next if data == '[DONE]'
+      json = JSON.parse(data, symbolize_names: true)
+      delta = json.dig(:choices, 0, :delta, :content)
+      yield delta if delta.present?
+    end
+  end
+
+  def self.build_request(method, path, body, conversation_id)
     configure
     uri = URI("http://#{@host}:#{@port}#{path}")
     http = Net::HTTP.new(uri.host, uri.port)
@@ -46,32 +105,19 @@ class OpenaiService
     request['Authorization'] = "Bearer #{@key}"
     request['Content-Type'] = 'application/json'
     request['X-Conversation-Id'] = conversation_id if conversation_id
+    [ http, uri, request ]
+  end
 
+  def self.log_request(request, uri, body)
     Rails.logger.info "[OpenAI] #{request.method} #{uri.path}"
     Rails.logger.info "[OpenAI] Request headers: #{request.to_hash.except('Authorization').to_json}"
     Rails.logger.info "[OpenAI] Body: #{body&.to_json}"
+  end
 
-    response = timed_request(http, request, timing)
-
+  def self.log_response(response)
     Rails.logger.info "[OpenAI] Response status: #{response.code} #{response.message}"
     Rails.logger.info "[OpenAI] Response headers: #{response.to_hash.to_json}"
     Rails.logger.info "[OpenAI] Response body: #{response.body}"
-
-    unless response.is_a?(Net::HTTPSuccess)
-      raise "OpenAI API error: #{response.code} - #{response.message}"
-    end
-
-    JSON.parse(response.body, symbolize_names: true)
-  end
-
-  def self.timed_request(http, request, timing = nil)
-    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    first_byte = nil
-    response = http.request(request) { first_byte = Process.clock_gettime(Process::CLOCK_MONOTONIC) }
-    finish = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    first_byte ||= finish
-    timing&.merge!(latency_ms: ms(finish - start), inference_ms: ms(first_byte - start))
-    response
   end
 
   def self.ms(seconds)
