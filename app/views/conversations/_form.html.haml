@@ -1,22 +1,21 @@
 .chat-conversation{ data: { controller: 'conversation' } }
-  #conversation-error
-
-  #conversation-messages
-    - if conversation
-      = render 'conversations/messages_container', conversation: conversation, messages: conversation.messages
-    - else
-      = turbo_frame_tag 'messages', data: { conversation_target: 'messages' }
-
-  = form_with url: conversations_path, method: :post, html: { id: 'conversation-form' },
-    data: { conversation_target: 'form', action: 'turbo:submit-start->conversation#disableForm turbo:submit-end->conversation#handleSubmitEnd' } do
-    = render 'conversations/conversation_hidden_fields', conversation: conversation
-    .row.mb-3
-      .col-1
-      .col-11
-        .d-flex.flex-column.gap-2.my-3
-          = text_area_tag :message, '', rows: 3, placeholder: 'Enter your message... (Press Enter to send)',
-            class: 'form-control conversation-textarea', id: 'conversation-textarea', required: true,
-            'data-conversation-target': 'textarea', 'data-action': 'keydown->conversation#handleKeyDown'
-        .d-flex.align-items-center.gap-2
-          = select_tag :model, options_for_select(models, current_model), class: 'form-select select-model-width', required: true
-          = submit_tag 'Send', class: 'btn btn-primary', 'data-conversation-target': 'submit'
+  .chat-column.chat-window.d-flex.flex-column
+    .chat-scroll.flex-fill.overflow-y-auto.min-h-0{ data: { conversation_target: 'scroll' } }
+      #conversation-messages
+        - if conversation
+          = render 'conversations/messages_container', conversation: conversation, messages: conversation.messages
+        - else
+          = turbo_frame_tag 'messages', data: { conversation_target: 'messages' }
+    .flex-shrink-0#conversation-error
+    = form_with url: conversations_path, method: :post, html: { id: 'conversation-form', class: 'flex-shrink-0' },
+      data: { conversation_target: 'form', action: 'turbo:submit-start->conversation#disableForm turbo:submit-end->conversation#handleSubmitEnd' } do
+      = render 'conversations/conversation_hidden_fields', conversation: conversation
+      .chat-input-card
+        = text_area_tag :message, '', rows: 1, placeholder: 'Enter your message...',
+          class: 'conversation-textarea', id: 'conversation-textarea', required: true,
+          'data-conversation-target': 'textarea', 'data-action': 'keydown->conversation#handleKeyDown'
+        .d-flex.align-items-center.justify-content-between.gap-2.mt-2
+          = select_tag :model, options_for_select(models, current_model), class: 'form-select chat-model-select', required: true
+          = button_tag type: 'submit', class: 'btn btn-primary chat-send-btn', 'data-conversation-target': 'submit', 'aria-label': 'Send message' do
+            %svg{ xmlns: 'http://www.w3.org/2000/svg', width: 16, height: 16, fill: 'currentColor', viewBox: '0 0 16 16', 'aria-hidden': true }
+              %path{ d: 'M8 15l-7-7h4V1h6v7h4l-7 7z' }

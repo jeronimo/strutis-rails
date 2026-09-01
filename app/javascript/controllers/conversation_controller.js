@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["textarea", "form", "path", "messages", "submit"]
+  static targets = ["textarea", "form", "path", "messages", "submit", "scroll"]
 
   connect() {
     this.mutationObserver = new MutationObserver((mutations) => this.handleMutation(mutations))
@@ -58,8 +58,7 @@ export default class extends Controller {
   }
 
   scrollToLatest() {
-    if (!this.hasMessagesTarget) return
-    const lastMessage = this.messagesTarget.lastElementChild
-    lastMessage?.scrollIntoView({ behavior: 'smooth', block: 'end' })
+    if (!this.hasScrollTarget) return
+    this.scrollTarget.scrollTop = this.scrollTarget.scrollHeight
   }
 }
