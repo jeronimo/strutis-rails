@@ -17,17 +17,20 @@ class OpenaiService
   end
 
   def self.completion(messages, model, conversation_id = nil)
-    request_body = { model: model, messages: messages, stream: true }
+    request_body = { model: model, messages: messages, stream: true, stream_options: { include_usage: true } }
     request_body[:conversation_id] = conversation_id if conversation_id
 
     timing = {}
+    usage = {}
     content = +''
-    stream_request('/v1/chat/completions', request_body, conversation_id, timing) do |delta|
+    stream_request('/v1/chat/completions', request_body, conversation_id, timing, usage) do |delta|
       content << delta
       yield delta
     end
 
-    { content: content, latency_ms: timing[:latency_ms], inference_ms: timing[:inference_ms] }
+    { content: content, latency_ms: timing[:latency_ms], inference_ms: timing[:inference_ms],
+      prompt_tokens: usage[:prompt_tokens], completion_tokens: usage[:completion_tokens],
+      reasoning_tokens: usage.dig(:completion_tokens_details, :reasoning_tokens) }
   end
 
   private
@@ -44,7 +47,7 @@ class OpenaiService
     JSON.parse(response.body, symbolize_names: true)
   end
 
-  def self.stream_request(path, body, conversation_id, timing)
+  def self.stream_request(path, body, conversation_id, timing, usage)
     http, uri, request = build_request('POST', path, body, conversation_id)
     log_request(request, uri, body)
 
@@ -61,7 +64,7 @@ class OpenaiService
         while (separator = buffer.index("\n\n"))
           event = buffer[0...separator]
           buffer = buffer[(separator + 2)..]
-          parse_sse_event(event) do |delta|
+          parse_sse_event(event, usage) do |delta|
             first_token ||= Process.clock_gettime(Process::CLOCK_MONOTONIC)
             yield delta
           end
@@ -75,12 +78,13 @@ class OpenaiService
     timing[:inference_ms] = ms(first_token - start)
   end
 
-  def self.parse_sse_event(event)
+  def self.parse_sse_event(event, usage)
     event.each_line do |line|
       next unless line.start_with?('data:')
       data = line[5..].strip
       next if data == '[DONE]'
       json = JSON.parse(data, symbolize_names: true)
+      usage.merge!(json[:usage]) if json[:usage]
       delta = json.dig(:choices, 0, :delta, :content)
       yield delta if delta.present?
     end

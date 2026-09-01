@@ -6,7 +6,9 @@ class ConversationCompletionJob < ApplicationJob
     @finalized = false
     result = assistant_response
     if @message
-      @message.update!(content: result[:content], latency_ms: result[:latency_ms], inference_ms: result[:inference_ms])
+      @message.update!(content: result[:content], latency_ms: result[:latency_ms], inference_ms: result[:inference_ms],
+        prompt_tokens: result[:prompt_tokens], completion_tokens: result[:completion_tokens],
+        reasoning_tokens: result[:reasoning_tokens])
       @finalized = true
       broadcast_messages
     else
