@@ -15,4 +15,8 @@ class User < ApplicationRecord
       super
     end
   end
+
+  def password_required?
+    !persisted? || password.present? || password_confirmation.present?
+  end
 end
