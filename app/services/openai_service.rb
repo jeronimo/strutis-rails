@@ -20,13 +20,14 @@ class OpenaiService
     request_body = { model: model, messages: messages, stream: false }
     request_body[:conversation_id] = conversation_id if conversation_id
 
-    response = request('POST', '/v1/chat/completions', request_body, conversation_id)
-    response[:choices]&.first&.[](:message)&.[](:content) || ''
+    timing = {}
+    body = request('POST', '/v1/chat/completions', request_body, conversation_id, timing)
+    { content: body.dig(:choices, 0, :message, :content).to_s, latency_ms: timing[:latency_ms], inference_ms: timing[:inference_ms] }
   end
 
   private
 
-  def self.request(method, path, body, conversation_id = nil)
+  def self.request(method, path, body, conversation_id = nil, timing = nil)
     configure
     uri = URI("http://#{@host}:#{@port}#{path}")
     http = Net::HTTP.new(uri.host, uri.port)
@@ -50,7 +51,7 @@ class OpenaiService
     Rails.logger.info "[OpenAI] Request headers: #{request.to_hash.except('Authorization').to_json}"
     Rails.logger.info "[OpenAI] Body: #{body&.to_json}"
 
-    response = http.request(request)
+    response = timed_request(http, request, timing)
 
     Rails.logger.info "[OpenAI] Response status: #{response.code} #{response.message}"
     Rails.logger.info "[OpenAI] Response headers: #{response.to_hash.to_json}"
@@ -61,5 +62,19 @@ class OpenaiService
     end
 
     JSON.parse(response.body, symbolize_names: true)
+  end
+
+  def self.timed_request(http, request, timing = nil)
+    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    first_byte = nil
+    response = http.request(request) { first_byte = Process.clock_gettime(Process::CLOCK_MONOTONIC) }
+    finish = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    first_byte ||= finish
+    timing&.merge!(latency_ms: ms(finish - start), inference_ms: ms(first_byte - start))
+    response
+  end
+
+  def self.ms(seconds)
+    (seconds * 1000).round
   end
 end

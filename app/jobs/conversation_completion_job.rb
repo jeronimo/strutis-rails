@@ -3,8 +3,8 @@ class ConversationCompletionJob < ApplicationJob
     @conversation = Conversation.find_by(id: conversation_id)
     return unless @conversation
 
-    content = assistant_response(@conversation)
-    @conversation.messages.create!(role: 'assistant', content: content, model: @conversation.model)
+    result = assistant_response(@conversation)
+    @conversation.messages.create!(role: 'assistant', content: result[:content], model: @conversation.model, latency_ms: result[:latency_ms], inference_ms: result[:inference_ms])
     broadcast_messages
   rescue StandardError => e
     Rails.logger.error "[ConversationCompletionJob] #{e.class}: #{e.message}"

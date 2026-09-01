@@ -1,5 +1,9 @@
 .row.mb-3
   .col-1
-    %strong.text-primary= role == 'user' ? 'You' : 'AI'
+    %strong.text-primary= message.role == 'user' ? 'You' : 'AI'
   .col-11
-    .p-2.rounded.bg-light.white-space-pre-wrap= content&.strip
+    .p-2.rounded.bg-light.white-space-pre-wrap= message.content&.strip
+    - if message.role == 'assistant' && message.latency_ms
+      .small
+        = format_ms(message.latency_ms)
+        %span.text-muted= message_breakdown(message)

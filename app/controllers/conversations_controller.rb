@@ -93,7 +93,7 @@ class ConversationsController < ApplicationController
     if new_conversation
       turbo_stream.replace('conversation-messages', partial: 'conversations/messages_container', locals: { conversation:, messages: [ user_message ] })
     else
-      turbo_stream.append("messages-#{conversation.public_id}", partial: 'conversations/message', locals: { role: user_message.role, content: user_message.content })
+      turbo_stream.append("messages-#{conversation.public_id}", partial: 'conversations/message', locals: { message: user_message })
     end
   end
 end
