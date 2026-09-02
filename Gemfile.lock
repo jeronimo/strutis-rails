@@ -124,7 +124,7 @@ GEM
       raabro (~> 1.4)
     globalid (1.4.0)
       activesupport (>= 6.1)
-    haml (7.3.1)
+    haml (7.5.0)
       prism (>= 1.1.0)
       temple (>= 0.8.2)
       thor
@@ -430,7 +430,7 @@ DEPENDENCIES
   commonmarker
   debug
   devise
-  haml (~> 7.3.0)
+  haml (~> 7.5.0)
   haml-lint
   haml-rails
   importmap-rails
@@ -498,7 +498,7 @@ CHECKSUMS
   et-orbi (1.4.1) sha256=007e2685b1d873415a7587ef889336c6dcdf8a47fc9c9a63547582b21660a11b
   fugit (1.13.0) sha256=a4f093fce740da52f216740a5041e2a594ea763cdb89e8b2754ca4399634ab18
   globalid (1.4.0) sha256=037f12fbf1d9d7a014d501c2d5c77356fd4ddd96d7a7991d6700bba96706f427
-  haml (7.3.1) sha256=53d8810d4290616de1192a47020e3ebf62d67f4af12747b16ff08c197d51b21c
+  haml (7.5.0) sha256=f84519100c81ee1c3ab55faf9bafe0d9dfbdb19cf75b204897025a719c92cd6e
   haml-lint (0.999.999) sha256=5b1fb5d06dbb0db220ea092cf97771bbb5c031e6867265bee9b2edbe0e79e395
   haml-rails (3.1.0) sha256=4366474d973e4b9d5326cb216f2073150cfeff4c2a3c07fadb49a490ffdf610b
   haml_lint (0.78.0) sha256=e8840e3c3b43345eced88ea2c46adcb253be8b940b095f9e0abf4512cdad40a6
