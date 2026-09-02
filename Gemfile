@@ -17,6 +17,7 @@ gem 'devise'
 gem 'sentry-rails'
 gem 'haml', '~> 7.3.0'
 gem 'haml-rails'
+gem 'commonmarker'
 
 group :development, :test do
   gem 'debug', platforms: %i[mri windows], require: 'debug/prelude'

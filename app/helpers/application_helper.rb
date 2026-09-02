@@ -13,4 +13,8 @@ module ApplicationHelper
     transport = message.latency_ms - inference
     " · thinking #{format_ms(inference)} · transport #{format_ms(transport)}"
   end
+
+  def render_message_markdown(content)
+    sanitize(Commonmarker.to_html(content.to_s, plugins: { syntax_highlighter: nil }))
+  end
 end

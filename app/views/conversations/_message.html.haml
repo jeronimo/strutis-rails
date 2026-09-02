@@ -1,5 +1,5 @@
 .chat-message{ id: "message-#{message.id}", class: message.role == 'user' ? 'chat-message-user' : nil }
-  .chat-bubble{ id: "message-content-#{message.id}" }= message.content&.strip
+  .chat-bubble{ id: "message-content-#{message.id}" }= render_message_markdown(message.content)
   - if message.role == 'assistant' && message.latency_ms
     .chat-meta.small.text-muted
       = format_ms(message.latency_ms)

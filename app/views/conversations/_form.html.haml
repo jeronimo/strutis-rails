@@ -15,7 +15,7 @@
           class: 'conversation-textarea', id: 'conversation-textarea', required: true,
           'data-conversation-target': 'textarea', 'data-action': 'keydown->conversation#handleKeyDown'
         .d-flex.align-items-center.justify-content-between.gap-2.mt-2
-          = select_tag :model, options_for_select(models, current_model), class: 'form-select chat-model-select', required: true
+          = select_tag :model, options_for_select(models, current_model), class: 'form-select w-50', required: true
           = button_tag type: 'submit', class: 'btn btn-primary chat-send-btn', 'data-conversation-target': 'submit', 'aria-label': 'Send message' do
             %svg{ xmlns: 'http://www.w3.org/2000/svg', width: 16, height: 16, fill: 'currentColor', viewBox: '0 0 16 16', 'aria-hidden': true }
               %path{ d: 'M8 15l-7-7h4V1h6v7h4l-7 7z' }
