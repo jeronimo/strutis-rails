@@ -18,8 +18,10 @@ class ConversationCompletionJob < ApplicationJob
     tools = OpenaiService.tools
     metrics = { prompt_tokens: 0, completion_tokens: 0, reasoning_tokens: 0, latency_ms: 0, inference_ms: 0 }
     loop do
+      compact_conversation if @conversation.compaction_needed?
       result = stream_turn(tools)
       accumulate_metrics(metrics, result)
+      @conversation.update_column(:context_tokens, result[:prompt_tokens].to_i + result[:completion_tokens].to_i)
       if result[:tool_calls].present?
         record_tool_turn(result, tools)
         next
@@ -31,22 +33,13 @@ class ConversationCompletionJob < ApplicationJob
 
   def stream_turn(tools)
     @message = nil
-    OpenaiService.completion(prompt, @conversation.model, @conversation.public_id, tools: tools) do |delta|
+    OpenaiService.completion(@conversation.prompt_messages, @conversation.model, @conversation.public_id, tools: tools) do |delta|
       if @message.nil?
         @message = @conversation.messages.create!(role: 'assistant', content: delta, model: @conversation.model)
         broadcast_frame(show_progress: false)
       else
         broadcast_delta(delta)
       end
-    end
-  end
-
-  def prompt
-    @conversation.messages.map do |message|
-      entry = { role: message.role, content: message.content }
-      entry[:tool_calls] = message.tool_calls if message.tool_calls.present?
-      entry[:tool_call_id] = message.tool_call_id if message.tool_call_id.present?
-      entry
     end
   end
 
@@ -73,6 +66,12 @@ class ConversationCompletionJob < ApplicationJob
     { error: e.message }.to_json
   end
 
+  def compact_conversation
+    ConversationCompactionService.perform(@conversation, refresh_tokens: false)
+  rescue StandardError => e
+    Rails.logger.error "[ConversationCompletionJob] Automatic compaction failed: #{e.class}: #{e.message}"
+  end
+
   def accumulate_metrics(metrics, result)
     metrics[:prompt_tokens] += result[:prompt_tokens].to_i
     metrics[:completion_tokens] += result[:completion_tokens].to_i
@@ -95,10 +94,7 @@ class ConversationCompletionJob < ApplicationJob
   end
 
   def broadcast_frame(show_progress:)
-    ConversationChannel.broadcast_replace_to @conversation,
-      target: "messages-#{@conversation.public_id}",
-      partial: 'conversations/messages_frame',
-      locals: { conversation: @conversation, messages: @conversation.messages.reload, show_progress: }
+    ConversationChannel.broadcast_frame(@conversation, show_progress:)
   end
 
   def broadcast_delta(delta)

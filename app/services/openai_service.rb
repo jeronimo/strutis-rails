@@ -13,17 +13,26 @@ class OpenaiService
   end
 
   def self.models
-    request('GET', '/v1/models', nil)[:data] || []
+    @models ||= request('GET', '/v1/models', nil)[:data] || []
+  end
+
+  def self.model(model_id)
+    models.find { |model| model[:id] == model_id }
+  end
+
+  def self.context_length(model_id)
+    model(model_id)&.dig(:context_length)
   end
 
   def self.tools
     request('GET', '/v1/tools', nil)[:data] || []
   end
 
-  def self.completion(messages, model, conversation_id = nil, tools: nil)
+  def self.completion(messages, model, conversation_id = nil, tools: nil, max_tokens: nil)
     request_body = { model: model, messages: messages, stream: true, stream_options: { include_usage: true } }
     request_body[:conversation_id] = conversation_id if conversation_id
     request_body[:tools] = tools.map { |tool| tool.except(:endpoint) } if tools.present?
+    request_body[:max_tokens] = max_tokens if max_tokens
 
     timing = {}
     usage = {}
@@ -32,7 +41,7 @@ class OpenaiService
     stream_request('/v1/chat/completions', request_body, conversation_id, timing, usage) do |delta|
       if delta[:content].present?
         content << delta[:content]
-        yield delta[:content]
+        yield delta[:content] if block_given?
       end
       accumulate_tool_calls(tool_calls, delta[:tool_calls])
     end

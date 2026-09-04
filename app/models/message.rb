@@ -24,4 +24,11 @@ class Message < ApplicationRecord
   rescue JSON::ParserError
     nil
   end
+
+  def to_prompt_entry
+    entry = { role: role, content: content }
+    entry[:tool_calls] = tool_calls if tool_calls.present?
+    entry[:tool_call_id] = tool_call_id if tool_call_id.present?
+    entry
+  end
 end

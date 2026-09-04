@@ -1,5 +1,14 @@
-- if message.role == 'tool'
-  .chat-message{ id: "message-#{message.id}" }
+- if message.role == 'compaction'
+  .chat-message.mb-3{ id: "message-#{message.id}" }
+    %details.chat-bubble.chat-tool{ id: "message-content-#{message.id}" }
+      %summary.small.text-muted
+        compacted
+        - if message.latency_ms
+          · #{format_ms(message.latency_ms)}
+      %pre.small.mb-0
+        = message.display_content
+- elsif message.role == 'tool'
+  .chat-message.mb-3{ id: "message-#{message.id}" }
     %details.chat-bubble.chat-tool{ id: "message-content-#{message.id}" }
       %summary.small.text-muted
         tool: #{message.tool_name}
@@ -10,7 +19,7 @@
       %pre.small.mb-0
         = message.display_content
 - elsif message.content.present?
-  .chat-message{ id: "message-#{message.id}", class: message.role == 'user' ? 'chat-message-user' : nil }
+  .chat-message.mb-3{ id: "message-#{message.id}", class: message.role == 'user' ? 'chat-message-user' : nil }
     .chat-bubble{ id: "message-content-#{message.id}" }
       = render_message_markdown(message.content)
     - if message.role == 'assistant' && message.latency_ms

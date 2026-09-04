@@ -24,6 +24,8 @@ class ConversationsController < ApplicationController
       return
     end
 
+    return handle_compact(model, public_id) if message.strip == '/compact'
+
     conversation = find_or_create_conversation(public_id, message, model)
 
     if conversation.nil?
@@ -53,6 +55,21 @@ class ConversationsController < ApplicationController
 
   def create_params
     @create_params ||= params.permit(:model, :message, :conversation_public_id)
+  end
+
+  def handle_compact(model, public_id)
+    conversation = current_user.conversations.find_by(public_id: public_id)
+    unless conversation && conversation.messages.where(role: 'user').where(compacted_at: nil).exists?
+      render_conversation_error('Nothing to compact yet.', :unprocessable_entity)
+      return
+    end
+
+    conversation.update!(model: model)
+    ConversationCompactionJob.perform_later(conversation.id)
+    render turbo_stream: [
+      turbo_stream.replace('conversation-error', ''),
+      turbo_stream.append("messages-#{conversation.public_id}", partial: 'conversations/progress', locals: { conversation: })
+    ]
   end
 
   def find_or_create_conversation(public_id, message, model)

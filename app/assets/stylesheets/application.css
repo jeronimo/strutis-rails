@@ -38,10 +38,6 @@
   margin-inline: auto;
 }
 
-.chat-message {
-  margin-bottom: 1.25rem;
-}
-
 .chat-bubble {
   white-space: normal;
   overflow-wrap: break-word;

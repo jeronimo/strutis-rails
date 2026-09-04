@@ -1,0 +1,8 @@
+- window = conversation.context_window
+- if window.to_i.positive?
+  .chat-context-usage.small.text-muted.font-monospace.d-flex.align-items-center.justify-content-between.gap-2.px-2.mb-2
+    %span= format('%s / %s tokens', number_with_delimiter(conversation.context_tokens), number_with_delimiter(window))
+    %span= format('%d%%', conversation.context_usage_percent)
+  - if conversation.compaction_needed?
+    .alert.alert-warning.py-2.my-2
+      Context usage is above 80%. Automatic compaction keeps system messages with rules.
