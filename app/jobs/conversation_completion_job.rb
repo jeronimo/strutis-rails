@@ -8,7 +8,7 @@ class ConversationCompletionJob < ApplicationJob
   rescue StandardError => e
     Rails.logger.error "[ConversationCompletionJob] #{e.class}: #{e.message}"
     discard_message
-    hide_progress if @conversation
+    broadcast_frame(show_progress: false) if @conversation
     broadcast_error if @conversation
   end
 
@@ -16,7 +16,7 @@ class ConversationCompletionJob < ApplicationJob
 
   def run_completion
     tools = OpenaiService.tools
-    metrics = { prompt_tokens: 0, completion_tokens: 0, reasoning_tokens: 0, latency_ms: 0 }
+    metrics = { prompt_tokens: 0, completion_tokens: 0, reasoning_tokens: 0, latency_ms: 0, inference_ms: 0 }
     loop do
       result = stream_turn(tools)
       accumulate_metrics(metrics, result)
@@ -34,8 +34,7 @@ class ConversationCompletionJob < ApplicationJob
     OpenaiService.completion(prompt, @conversation.model, @conversation.public_id, tools: tools) do |delta|
       if @message.nil?
         @message = @conversation.messages.create!(role: 'assistant', content: delta, model: @conversation.model)
-        hide_progress
-        broadcast_append_message(@message)
+        broadcast_frame(show_progress: false)
       else
         broadcast_delta(delta)
       end
@@ -57,14 +56,14 @@ class ConversationCompletionJob < ApplicationJob
     else
       @message = @conversation.messages.create!(role: 'assistant', content: result[:content], tool_calls: result[:tool_calls], model: @conversation.model)
     end
+    broadcast_frame(show_progress: true)
     result[:tool_calls].each do |tool_call|
       start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       tool_result = execute_tool(tool_call, tools)
-      latency_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
-      @conversation.messages.create!(role: 'tool', tool_call_id: tool_call[:id], content: tool_result, latency_ms: latency_ms, model: @conversation.model)
+      tool_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
+      @conversation.messages.create!(role: 'tool', tool_call_id: tool_call[:id], content: tool_result, latency_ms: tool_ms, inference_ms: tool_ms, model: @conversation.model)
     end
-    broadcast_messages
-    show_progress
+    broadcast_frame(show_progress: true)
   end
 
   def execute_tool(tool_call, tools)
@@ -79,38 +78,27 @@ class ConversationCompletionJob < ApplicationJob
     metrics[:completion_tokens] += result[:completion_tokens].to_i
     metrics[:reasoning_tokens] += result[:reasoning_tokens].to_i
     metrics[:latency_ms] += result[:latency_ms].to_i
+    metrics[:inference_ms] += result[:inference_ms].to_i
   end
 
   def finalize(result, metrics)
     if @message
-      @message.update!(content: result[:content], latency_ms: metrics[:latency_ms], inference_ms: result[:inference_ms],
+      @message.update!(content: result[:content], latency_ms: metrics[:latency_ms], inference_ms: metrics[:inference_ms],
         prompt_tokens: metrics[:prompt_tokens], completion_tokens: metrics[:completion_tokens],
         reasoning_tokens: metrics[:reasoning_tokens])
       @finalized = true
-      broadcast_messages
+      broadcast_frame(show_progress: false)
     else
-      hide_progress
+      broadcast_frame(show_progress: false)
       broadcast_error
     end
   end
 
-  def show_progress
-    ConversationChannel.broadcast_append_to @conversation,
+  def broadcast_frame(show_progress:)
+    ConversationChannel.broadcast_replace_to @conversation,
       target: "messages-#{@conversation.public_id}",
-      partial: 'conversations/progress',
-      locals: { conversation: @conversation }
-  end
-
-  def hide_progress
-    ConversationChannel.broadcast_remove_to @conversation,
-      target: "conversation-progress-#{@conversation.public_id}"
-  end
-
-  def broadcast_append_message(message)
-    ConversationChannel.broadcast_append_to @conversation,
-      target: "messages-#{@conversation.public_id}",
-      partial: 'conversations/message',
-      locals: { message: message }
+      partial: 'conversations/messages_frame',
+      locals: { conversation: @conversation, messages: @conversation.messages.reload, show_progress: }
   end
 
   def broadcast_delta(delta)
@@ -119,18 +107,10 @@ class ConversationCompletionJob < ApplicationJob
       html: ERB::Util.html_escape(delta)
   end
 
-  def broadcast_messages
-    ConversationChannel.broadcast_replace_to @conversation,
-      target: "messages-#{@conversation.public_id}",
-      partial: 'conversations/messages_frame',
-      locals: { conversation: @conversation, messages: @conversation.messages.reload }
-  end
-
   def discard_message
     return unless @message && !@finalized
     @message.destroy!
     @message = nil
-    broadcast_messages
   end
 
   def broadcast_error

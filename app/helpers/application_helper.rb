@@ -10,8 +10,11 @@ module ApplicationHelper
 
   def message_breakdown(message)
     inference = message.inference_ms || 0
-    transport = message.latency_ms - inference
-    " · thinking #{format_ms(inference)} · transport #{format_ms(transport)}"
+    transport = (message.latency_ms || 0) - inference
+    parts = []
+    parts << "thinking #{format_ms(inference)}" if inference.positive?
+    parts << "transport #{format_ms(transport)}" if transport.positive?
+    parts.empty? ? format_ms(message.latency_ms) : "#{parts.join(' · ')} — #{format_ms(message.latency_ms)}"
   end
 
   def render_message_markdown(content)

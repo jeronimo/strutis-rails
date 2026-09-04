@@ -1,3 +1,5 @@
 = turbo_frame_tag "messages-#{conversation.public_id}", data: { conversation_target: 'messages' } do
   - messages.each do |message|
     = render 'conversations/message', message: message
+  - if show_progress
+    = render 'conversations/progress', conversation: conversation

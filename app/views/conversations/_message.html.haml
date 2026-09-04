@@ -15,5 +15,4 @@
       = render_message_markdown(message.content)
     - if message.role == 'assistant' && message.latency_ms
       .chat-meta.small.text-muted
-        = format_ms(message.latency_ms)
         = message_breakdown(message)

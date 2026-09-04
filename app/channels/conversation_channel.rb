@@ -21,6 +21,6 @@ class ConversationChannel < ApplicationCable::Channel
     self.class.broadcast_replace_to @conversation,
       target: "messages-#{@conversation.public_id}",
       partial: 'conversations/messages_frame',
-      locals: { conversation: @conversation, messages: @conversation.messages }
+      locals: { conversation: @conversation, messages: @conversation.messages, show_progress: false }
   end
 end
