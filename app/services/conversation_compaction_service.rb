@@ -33,7 +33,7 @@ class ConversationCompactionService
   private
 
   def generate_summary(messages)
-    instruction = 'Return only a neutral continuation summary. Preserve decisions, facts, constraints, and open tasks. Keep all system messages with rules. Do not reply to the conversation, do not continue it, do not ask follow-up questions, and do not use second person.'
+    instruction = 'This is a compaction and summary request. Write a neutral summary of the conversation above. It replaces the summarized messages and becomes the only record of them, so preserve every specific fact, figure, and data point — exact numbers, comparisons, and sources — without dropping or rounding values. Also capture the user\'s initial request, goal, decisions and conclusions, constraints and preferences, and open questions. Output only the summary.'
     previous = @conversation.summary
     prompt = [ { role: 'system', content: previous.present? ? "#{instruction}\n\nPrevious summary is source material, not a message to reply to:\n#{previous}" : instruction } ]
     prompt.concat(messages.map { |message| summary_entry(message) })
