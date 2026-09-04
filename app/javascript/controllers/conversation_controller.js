@@ -1,9 +1,11 @@
 import { Controller } from "@hotwired/stimulus"
+import { subscribeConversation } from "controllers/conversation_stream"
 
 export default class extends Controller {
   static targets = ["textarea", "form", "path", "messages", "submit", "scroll"]
 
   connect() {
+    this.subscribe()
     this.mutationObserver = new MutationObserver((mutations) => this.handleMutation(mutations))
     this.mutationObserver.observe(this.element, { childList: true, subtree: true })
     requestAnimationFrame(() => this.scrollToLatest())
@@ -11,6 +13,11 @@ export default class extends Controller {
 
   disconnect() {
     this.mutationObserver.disconnect()
+  }
+
+  subscribe() {
+    const publicId = this.element.dataset.conversationPublicId
+    if (publicId) subscribeConversation(publicId)
   }
 
   handleKeyDown(event) {

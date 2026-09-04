@@ -11,13 +11,18 @@ class ConversationChannel < ApplicationCable::Channel
   end
 
   def subscribed
-    @stream_name = verified_stream_name_from_params
     @conversation = current_user&.conversations&.find_by(public_id: params[:public_id])
 
-    if @conversation && @stream_name == self.class.send(:stream_name_from, @conversation)
+    if @conversation
+      @stream_name = self.class.send(:stream_name_from, @conversation)
       stream_from @stream_name
+      Rails.logger.info "ConversationChannel subscribed to #{@stream_name}"
     else
       reject
     end
+  end
+
+  def unsubscribed
+    Rails.logger.info "ConversationChannel unsubscribed from #{@stream_name}"
   end
 end

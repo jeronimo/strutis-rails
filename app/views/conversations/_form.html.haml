@@ -1,4 +1,4 @@
-.chat-conversation{ data: { controller: 'conversation' } }
+.chat-conversation{ data: { controller: 'conversation', conversation_public_id: conversation&.public_id } }
   .chat-column.chat-window.d-flex.flex-column
     .chat-scroll.flex-fill.overflow-y-auto.min-h-0{ data: { conversation_target: 'scroll' } }
       #conversation-messages
