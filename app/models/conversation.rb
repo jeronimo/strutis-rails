@@ -33,4 +33,21 @@ class Conversation < ApplicationRecord
     entries.concat(active.reject { |message| message.role == 'system' }.map(&:to_prompt_entry))
     entries
   end
+
+  def tool_call_names
+    @tool_call_names ||= build_tool_call_names
+  end
+
+  def reset_tool_call_names!
+    @tool_call_names = nil
+  end
+
+  private
+
+  def build_tool_call_names
+    source = messages.loaded? ? messages.to_a : messages.where(role: 'assistant').where.not(tool_calls: nil).load
+    source
+      .flat_map { |message| Array(message.tool_calls) }
+      .to_h { |tool_call| [ tool_call['id'], tool_call.dig('function', 'name') ] }
+  end
 end

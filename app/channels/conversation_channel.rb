@@ -16,7 +16,6 @@ class ConversationChannel < ApplicationCable::Channel
 
     if @conversation && @stream_name == self.class.send(:stream_name_from, @conversation)
       stream_from @stream_name
-      self.class.broadcast_frame(@conversation, show_progress: false)
     else
       reject
     end
