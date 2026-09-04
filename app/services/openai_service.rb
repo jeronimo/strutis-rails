@@ -16,24 +16,71 @@ class OpenaiService
     request('GET', '/v1/models', nil)[:data] || []
   end
 
-  def self.completion(messages, model, conversation_id = nil)
+  def self.tools
+    request('GET', '/v1/tools', nil)[:data] || []
+  end
+
+  def self.completion(messages, model, conversation_id = nil, tools: nil)
     request_body = { model: model, messages: messages, stream: true, stream_options: { include_usage: true } }
     request_body[:conversation_id] = conversation_id if conversation_id
+    request_body[:tools] = tools.map { |tool| tool.except(:endpoint) } if tools.present?
 
     timing = {}
     usage = {}
     content = +''
+    tool_calls = {}
     stream_request('/v1/chat/completions', request_body, conversation_id, timing, usage) do |delta|
-      content << delta
-      yield delta
+      if delta[:content].present?
+        content << delta[:content]
+        yield delta[:content]
+      end
+      accumulate_tool_calls(tool_calls, delta[:tool_calls])
     end
 
-    { content: content, latency_ms: timing[:latency_ms], inference_ms: timing[:inference_ms],
+    { content: content, tool_calls: normalize_tool_calls(tool_calls), latency_ms: timing[:latency_ms], inference_ms: timing[:inference_ms],
       prompt_tokens: usage[:prompt_tokens], completion_tokens: usage[:completion_tokens],
       reasoning_tokens: usage.dig(:completion_tokens_details, :reasoning_tokens) }
   end
 
+  def self.execute_tool(tool_call, tools)
+    configure
+    name = tool_call.dig(:function, :name)
+    definition = tools.find { |tool| tool.dig(:function, :name) == name }
+    raise "Unknown tool: #{name}" unless definition
+
+    uri = URI(definition[:endpoint])
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.open_timeout = @open_timeout
+    http.read_timeout = @read_timeout
+
+    request = Net::HTTP::Post.new(uri)
+    request['Content-Type'] = 'application/json'
+    request.body = JSON.parse(tool_call.dig(:function, :arguments).to_s).to_json
+
+    response = http.request(request)
+    raise "Tool error: #{response.code} - #{response.message}" unless response.is_a?(Net::HTTPSuccess)
+
+    body = response.body.force_encoding(Encoding::UTF_8)
+    raise 'Tool response is not valid UTF-8' unless body.valid_encoding?
+    body
+  end
+
   private
+
+  def self.accumulate_tool_calls(tool_calls, delta_tool_calls)
+    return unless delta_tool_calls
+    delta_tool_calls.each do |delta|
+      call = tool_calls[delta[:index]] ||= { id: nil, type: 'function', name: nil, arguments: +'' }
+      call[:id] = delta[:id] if delta[:id]
+      call[:type] = delta[:type] if delta[:type]
+      call[:name] = delta.dig(:function, :name) if delta.dig(:function, :name)
+      call[:arguments] << delta.dig(:function, :arguments) if delta.dig(:function, :arguments)
+    end
+  end
+
+  def self.normalize_tool_calls(tool_calls)
+    tool_calls.values.map { |call| { id: call[:id], type: call[:type], function: { name: call[:name], arguments: call[:arguments] } } }
+  end
 
   def self.request(method, path, body, conversation_id = nil)
     http, uri, request = build_request(method, path, body, conversation_id)
@@ -85,8 +132,8 @@ class OpenaiService
       next if data == '[DONE]'
       json = JSON.parse(data, symbolize_names: true)
       usage.merge!(json[:usage]) if json[:usage]
-      delta = json.dig(:choices, 0, :delta, :content)
-      yield delta if delta.present?
+      delta = json.dig(:choices, 0, :delta)
+      yield delta if delta
     end
   end
 
