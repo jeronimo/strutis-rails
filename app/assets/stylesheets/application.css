@@ -103,6 +103,24 @@
   overflow-y: auto;
 }
 
+.chat-progress .progress {
+  --bs-progress-height: 0.25rem;
+  --bs-progress-bar-bg: var(--bs-primary);
+}
+
+.chat-progress .progress-bar {
+  animation: chat-progress-indeterminate 1.5s ease-in-out infinite;
+}
+
+@keyframes chat-progress-indeterminate {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(250%);
+  }
+}
+
 .chat-input-card {
   border: 1px solid var(--bs-border-color);
   border-radius: 1rem;

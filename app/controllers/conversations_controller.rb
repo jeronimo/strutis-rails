@@ -75,7 +75,8 @@ class ConversationsController < ApplicationController
     streams = [
       user_message_stream(conversation, user_message, new_conversation:),
       conversation_hidden_fields_stream(conversation),
-      turbo_stream.replace('conversation-error', '')
+      turbo_stream.replace('conversation-error', ''),
+      turbo_stream.append("messages-#{conversation.public_id}", partial: 'conversations/progress', locals: { conversation: })
     ]
     streams << conversation_list_stream(conversation, active: new_conversation) if new_conversation
     render turbo_stream: streams

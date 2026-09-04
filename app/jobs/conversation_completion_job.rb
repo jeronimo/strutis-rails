@@ -8,6 +8,7 @@ class ConversationCompletionJob < ApplicationJob
   rescue StandardError => e
     Rails.logger.error "[ConversationCompletionJob] #{e.class}: #{e.message}"
     discard_message
+    hide_progress if @conversation
     broadcast_error if @conversation
   end
 
@@ -33,6 +34,7 @@ class ConversationCompletionJob < ApplicationJob
     OpenaiService.completion(prompt, @conversation.model, @conversation.public_id, tools: tools) do |delta|
       if @message.nil?
         @message = @conversation.messages.create!(role: 'assistant', content: delta, model: @conversation.model)
+        hide_progress
         broadcast_append_message(@message)
       else
         broadcast_delta(delta)
@@ -62,6 +64,7 @@ class ConversationCompletionJob < ApplicationJob
       @conversation.messages.create!(role: 'tool', tool_call_id: tool_call[:id], content: tool_result, latency_ms: latency_ms, model: @conversation.model)
     end
     broadcast_messages
+    show_progress
   end
 
   def execute_tool(tool_call, tools)
@@ -86,8 +89,21 @@ class ConversationCompletionJob < ApplicationJob
       @finalized = true
       broadcast_messages
     else
+      hide_progress
       broadcast_error
     end
+  end
+
+  def show_progress
+    ConversationChannel.broadcast_append_to @conversation,
+      target: "messages-#{@conversation.public_id}",
+      partial: 'conversations/progress',
+      locals: { conversation: @conversation }
+  end
+
+  def hide_progress
+    ConversationChannel.broadcast_remove_to @conversation,
+      target: "conversation-progress-#{@conversation.public_id}"
   end
 
   def broadcast_append_message(message)

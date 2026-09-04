@@ -3,6 +3,8 @@
     %details.chat-bubble.chat-tool{ id: "message-content-#{message.id}" }
       %summary.small.text-muted
         tool: #{message.tool_name}
+        - if message.tool_summary.present?
+          · #{message.tool_summary}
         - if message.latency_ms
           · #{format_ms(message.latency_ms)}
       %pre.small.mb-0

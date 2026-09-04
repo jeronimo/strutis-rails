@@ -16,4 +16,12 @@ class Message < ApplicationRecord
   rescue JSON::ParserError
     content
   end
+
+  def tool_summary
+    return unless role == 'tool'
+    parsed = JSON.parse(content)
+    parsed['query'] || parsed['url'] if parsed.is_a?(Hash)
+  rescue JSON::ParserError
+    nil
+  end
 end
