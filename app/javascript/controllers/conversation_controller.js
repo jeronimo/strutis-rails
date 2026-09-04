@@ -6,6 +6,7 @@ export default class extends Controller {
   connect() {
     this.mutationObserver = new MutationObserver((mutations) => this.handleMutation(mutations))
     this.mutationObserver.observe(this.element, { childList: true, subtree: true })
+    requestAnimationFrame(() => this.scrollToLatest())
   }
 
   disconnect() {
