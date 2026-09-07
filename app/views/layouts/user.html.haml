@@ -21,11 +21,12 @@
     = stylesheet_link_tag 'application', 'data-turbo-track': 'reload'
     = isolated_importmap_tags 'application'
 
-  %body
+  %body{ data: { controller: 'conversation-drawer' } }
+    .conversation-drawer-backdrop{ data: { conversation_drawer_target: 'backdrop', action: 'conversation-drawer#close' } }
     .container-fluid
       .row
         .col-md-3
-          %nav.navflex.flex-column.mt-3
+          %nav.navflex.flex-column.conversation-drawer{ data: { conversation_drawer_target: 'drawer' } }
             %h5.text-muted.d-flex.align-items-center.gap-2.mb-4.ps-2
               = link_to root_path, class: 'd-flex align-items-center gap-2 text-decoration-none' do
                 = image_tag 'logo.webp', alt: 'Strutis', class: 'strutis-logo'
@@ -37,4 +38,10 @@
             .list-group.mt-2{ data: { turbo: false } }
               = button_to 'Sign Out', destroy_user_session_path, method: :delete, class: 'btn btn-link p-0 w-100 text-start text-decoration-none', form: { class: 'list-group-item list-group-item-action' }
         .col-md-9.mt-3
+          .conversation-drawer-header.d-md-none
+            = button_tag type: 'button', class: 'btn btn-outline-primary btn-sm', 'aria-label': 'Conversation list', 'aria-expanded': 'false',
+              data: { conversation_drawer_target: 'toggle', action: 'conversation-drawer#toggle' } do
+              %svg{ xmlns: 'http://www.w3.org/2000/svg', width: 16, height: 16, fill: 'currentColor', viewBox: '0 0 16 16', 'aria-hidden': true }
+                %path{ d: 'M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-5a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-5a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5' }
+            %span.conversation-drawer-title.flex-grow-1.text-truncate= @conversation&.title.presence || 'New Conversation'
           = yield

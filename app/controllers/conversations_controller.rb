@@ -10,8 +10,8 @@ class ConversationsController < ApplicationController
 
   def show
     @conversation = current_user.conversations.find_by!(public_id: params[:id])
-    @models = [ @conversation.model, *available_models ].compact.uniq
-    @current_model = @conversation.model
+    @models = available_models
+    @current_model = @models.include?(@conversation.model) ? @conversation.model : @models.first
   end
 
   def create
