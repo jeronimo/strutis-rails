@@ -68,5 +68,6 @@ export default class extends Controller {
   scrollToLatest() {
     if (!this.hasScrollTarget) return
     this.scrollTarget.scrollTop = this.scrollTarget.scrollHeight
+    this.formTarget.scrollIntoView({ block: 'end' })
   }
 }
