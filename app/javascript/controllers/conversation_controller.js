@@ -40,8 +40,21 @@ export default class extends Controller {
 
   handleMutation(mutations) {
     this.updateUrl()
+    this.syncPublicId(mutations)
     if (this.mutationAffectsMessages(mutations)) {
       this.scrollToLatest()
+    }
+  }
+
+  syncPublicId(mutations) {
+    const added = mutations.some((m) =>
+      Array.from(m.addedNodes).some((n) => n.nodeType === Node.ELEMENT_NODE && n.id === 'conversation-hidden-fields')
+    )
+    if (!added) return
+    const publicId = this.element.querySelector('input[name="conversation_public_id"]')?.value
+    if (publicId && publicId !== this.element.dataset.conversationPublicId) {
+      this.element.dataset.conversationPublicId = publicId
+      this.subscribe()
     }
   }
 
