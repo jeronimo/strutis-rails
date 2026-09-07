@@ -24,15 +24,20 @@ class OpenaiService
     model(model_id)&.dig(:context_length)
   end
 
+  def self.chat_template_kwargs(model_id)
+    model(model_id)&.dig(:chat_template_kwargs)
+  end
+
   def self.tools
     request('GET', '/v1/tools', nil)[:data] || []
   end
 
-  def self.completion(messages, model, conversation_id = nil, tools: nil, max_tokens: nil)
+  def self.completion(messages, model, conversation_id = nil, tools: nil, max_tokens: nil, chat_template_kwargs: nil)
     request_body = { model: model, messages: messages, stream: true, stream_options: { include_usage: true } }
     request_body[:conversation_id] = conversation_id if conversation_id
     request_body[:tools] = tools.map { |tool| tool.except(:endpoint) } if tools.present?
     request_body[:max_tokens] = max_tokens if max_tokens
+    request_body[:chat_template_kwargs] = chat_template_kwargs if chat_template_kwargs.present?
 
     timing = {}
     usage = {}

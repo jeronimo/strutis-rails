@@ -26,6 +26,14 @@ class Conversation < ApplicationRecord
     window.to_i.positive? && context_tokens.to_f / window > COMPACT_THRESHOLD
   end
 
+  def chat_template_kwargs
+    kwargs = OpenaiService.chat_template_kwargs(model)
+    return unless kwargs
+    kwargs = kwargs.merge(enable_thinking: thinking)
+    kwargs = kwargs.merge(reasoning_effort: reasoning_effort) if reasoning_effort.present?
+    kwargs
+  end
+
   def prompt_messages
     active = messages.where(compacted_at: nil).where.not(role: 'compaction').to_a
     entries = active.select { |message| message.role == 'system' }.map(&:to_prompt_entry)

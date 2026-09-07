@@ -31,6 +31,29 @@ RSpec.describe Conversation, type: :model do
     end
   end
 
+  describe '#chat_template_kwargs' do
+    it 'returns nil when the model has no chat_template_kwargs' do
+      allow(OpenaiService).to receive(:chat_template_kwargs).with('test-model').and_return(nil)
+      expect(conversation.chat_template_kwargs).to be_nil
+    end
+
+    it 'merges enable_thinking and keeps other defaults' do
+      allow(OpenaiService).to receive(:chat_template_kwargs).with('test-model')
+        .and_return({ enable_thinking: true, reasoning_effort: 'medium', preserve_thinking: true })
+      conversation.update!(thinking: false)
+      expect(conversation.chat_template_kwargs).to eq({ enable_thinking: false, reasoning_effort: 'medium', preserve_thinking: true })
+    end
+
+    it 'merges reasoning_effort only when set' do
+      allow(OpenaiService).to receive(:chat_template_kwargs).with('test-model')
+        .and_return({ enable_thinking: true, reasoning_effort: 'medium' })
+      conversation.update!(thinking: true)
+      expect(conversation.chat_template_kwargs).to eq({ enable_thinking: true, reasoning_effort: 'medium' })
+      conversation.update!(reasoning_effort: 'xhigh')
+      expect(conversation.chat_template_kwargs).to eq({ enable_thinking: true, reasoning_effort: 'xhigh' })
+    end
+  end
+
   describe '#prompt_messages' do
     it 'keeps system messages first, includes summary, and excludes compacted and compaction messages' do
       conversation.update!(summary: 'summary')

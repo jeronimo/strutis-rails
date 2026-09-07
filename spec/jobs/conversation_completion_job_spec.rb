@@ -6,6 +6,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
 
   before do
     allow(OpenaiService).to receive(:context_length).with('test-model').and_return(100)
+    allow(OpenaiService).to receive(:chat_template_kwargs).and_return(nil)
     allow(OpenaiService).to receive(:tools).and_return([])
     allow(ConversationChannel).to receive(:broadcast_frame)
     allow(ConversationChannel).to receive(:broadcast_replace_to)

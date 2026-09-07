@@ -33,7 +33,8 @@ class ConversationCompletionJob < ApplicationJob
 
   def stream_turn(tools)
     @message = nil
-    OpenaiService.completion(@conversation.prompt_messages, @conversation.model, @conversation.public_id, tools: tools) do |delta|
+    OpenaiService.completion(@conversation.prompt_messages, @conversation.model, @conversation.public_id, tools: tools,
+      chat_template_kwargs: @conversation.chat_template_kwargs) do |delta|
       if @message.nil?
         @message = @conversation.messages.create!(role: 'assistant', content: delta, model: @conversation.model)
         broadcast_frame(show_progress: false)

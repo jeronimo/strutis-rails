@@ -6,12 +6,19 @@ class ConversationsController < ApplicationController
     @models = available_models
     @conversation = nil
     @current_model = @models.first
+    kwargs = OpenaiService.chat_template_kwargs(@current_model)
+    @current_thinking = kwargs&.dig(:enable_thinking) || false
+    @current_reasoning_effort = kwargs&.dig(:reasoning_effort)
+    @reasoning_effort_options = kwargs&.dig(:reasoning_effort_options) || []
   end
 
   def show
     @conversation = current_user.conversations.find_by!(public_id: params[:id])
     @models = available_models
     @current_model = @models.include?(@conversation.model) ? @conversation.model : @models.first
+    @current_thinking = @conversation.thinking
+    @current_reasoning_effort = @conversation.reasoning_effort || default_reasoning_effort
+    @reasoning_effort_options = reasoning_effort_options
   end
 
   def create
@@ -33,7 +40,7 @@ class ConversationsController < ApplicationController
       return
     end
 
-    conversation.update!(model: model)
+    apply_conversation_settings(conversation, model)
     user_message = conversation.messages.create!(role: 'user', content: message, model: model)
     ConversationCompletionJob.perform_later(conversation.id)
 
@@ -54,7 +61,25 @@ class ConversationsController < ApplicationController
   private
 
   def create_params
-    @create_params ||= params.permit(:model, :message, :conversation_public_id)
+    @create_params ||= params.permit(:model, :message, :conversation_public_id, :thinking, :reasoning_effort)
+  end
+
+  def apply_conversation_settings(conversation, model)
+    conversation.update!(model: model, thinking: create_params[:thinking] == '1', reasoning_effort: valid_reasoning_effort(model))
+  end
+
+  def valid_reasoning_effort(model)
+    effort = create_params[:reasoning_effort].presence
+    options = OpenaiService.chat_template_kwargs(model)&.dig(:reasoning_effort_options) || []
+    options.include?(effort) ? effort : nil
+  end
+
+  def reasoning_effort_options
+    OpenaiService.chat_template_kwargs(@current_model)&.dig(:reasoning_effort_options) || []
+  end
+
+  def default_reasoning_effort
+    OpenaiService.chat_template_kwargs(@current_model)&.dig(:reasoning_effort)
   end
 
   def handle_compact(model, public_id)
@@ -64,7 +89,7 @@ class ConversationsController < ApplicationController
       return
     end
 
-    conversation.update!(model: model)
+    apply_conversation_settings(conversation, model)
     ConversationCompactionJob.perform_later(conversation.id)
     render turbo_stream: [
       turbo_stream.replace('conversation-error', ''),
