@@ -18,6 +18,7 @@ module ApplicationHelper
   end
 
   def render_message_markdown(content)
-    sanitize(Commonmarker.to_html(content.to_s, plugins: { syntax_highlighter: nil }))
+    html = Commonmarker.to_html(content.to_s, plugins: { syntax_highlighter: nil })
+    sanitize(html, tags: %w[p br strong em del a ul ol li code pre blockquote h1 h2 h3 h4 h5 h6 hr img table thead tbody tr th td])
   end
 end

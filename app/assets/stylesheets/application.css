@@ -73,6 +73,25 @@
   border-radius: 0;
 }
 
+.chat-bubble table {
+  border-collapse: collapse;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  margin: 0.5rem 0;
+}
+
+.chat-bubble th,
+.chat-bubble td {
+  border: 1px solid var(--bs-border-color);
+  padding: 0.25rem 0.5rem;
+}
+
+.chat-bubble th {
+  background-color: var(--bs-tertiary-bg);
+  font-weight: 600;
+}
+
 .chat-message-user {
   display: flex;
   justify-content: flex-end;
