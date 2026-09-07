@@ -71,6 +71,23 @@
         text-underline-offset: 0.0925em;
       }
 
+      .go-back {
+        display: inline-block;
+        margin-top: 1em;
+        padding: 0.5em 1.25em;
+        background-color: #212a55;
+        border: 1px solid #6f707b;
+        border-radius: 0.5em;
+        color: #fff;
+        font-weight: 700;
+        text-decoration: none;
+      }
+
+      .go-back:hover {
+        border-color: #fd412c;
+        color: #fff;
+      }
+
       b, strong {
         font-weight: 700;
       }
@@ -127,6 +144,7 @@
       </header>
       <article>
         <p><strong>The change you wanted was rejected.</strong> Maybe you tried to change something you didn't have access to. If you're the application owner check the logs for more information.</p>
+        <a class="go-back" href="/">Go back</a>
       </article>
     </main>
 
