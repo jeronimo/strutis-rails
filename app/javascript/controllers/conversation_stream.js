@@ -36,10 +36,7 @@ export function unsubscribeConversation() {
 }
 
 function applyStream(data) {
-  const stream = document.createElement("turbo-stream")
-  stream.innerHTML = data
-  document.body.append(stream)
-  stream.remove()
+  Turbo.renderStreamMessage(data)
 }
 
 document.addEventListener("turbo:load", () => {
