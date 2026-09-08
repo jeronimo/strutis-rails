@@ -3,19 +3,22 @@ require 'uri'
 
 class LatenciesController < ApplicationController
   def show
-    begin
-      start_time = Time.now.to_f
+    start_time = Time.now.to_f
 
-      host = Rails.application.credentials.dig(:openai_api, :host)
-      port = Rails.application.credentials.dig(:openai_api, :port)
-      url = URI("http://#{host}:#{port}/health")
-      response = Net::HTTP.get_response(url)
+    host = Rails.application.credentials.dig(:openai_api, :host)
+    port = Rails.application.credentials.dig(:openai_api, :port)
+    url = URI("http://#{host}:#{port}/health")
+    http = Net::HTTP.new(url.host, url.port)
+    http.open_timeout = 5
+    http.read_timeout = 5
+    http.get('/health')
 
-      latency_ms = ((Time.now.to_f - start_time) * 1000).round
+    latency_ms = ((Time.now.to_f - start_time) * 1000).round
 
-      render json: { latency: latency_ms }
-    rescue StandardError => e
-      render json: { latency: nil, error: 'Hiding' }, status: 500
-    end
+    render json: { latency: latency_ms }
+  rescue StandardError => e
+    Sentry.capture_exception(e)
+    Rails.logger.error { "[LatenciesController] #{e.full_message}" }
+    render json: { latency: nil, error: 'Hiding' }, status: 500
   end
 end

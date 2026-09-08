@@ -10,8 +10,6 @@ class Conversation < ApplicationRecord
 
   def context_window
     OpenaiService.context_length(model)
-  rescue StandardError
-    nil
   end
 
   def context_usage_percent

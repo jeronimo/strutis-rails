@@ -4,12 +4,11 @@ class ConversationCompletionJob < ApplicationJob
     return unless @conversation
 
     @finalized = false
-    run_completion
-  rescue StandardError => e
-    Rails.logger.error "[ConversationCompletionJob] #{e.class}: #{e.message}"
-    discard_message
-    broadcast_frame(show_progress: false) if @conversation
-    broadcast_error if @conversation
+    begin
+      run_completion
+    ensure
+      finish_failed_turn
+    end
   end
 
   private
@@ -62,15 +61,14 @@ class ConversationCompletionJob < ApplicationJob
 
   def execute_tool(tool_call, tools)
     OpenaiService.execute_tool(tool_call, tools)
-  rescue StandardError => e
-    Rails.logger.error "[ConversationCompletionJob] Tool #{tool_call.dig(:function, :name)} failed: #{e.class}: #{e.message}"
+  rescue OpenaiService::Error, JSON::ParserError, Timeout::Error, SystemCallError, SocketError, Net::HTTPError => e
+    Sentry.capture_exception(e)
+    Rails.logger.error { "[ConversationCompletionJob] Tool #{tool_call.dig(:function, :name)} failed: #{e.full_message}" }
     { error: e.message }.to_json
   end
 
   def compact_conversation
     ConversationCompactionService.perform(@conversation, refresh_tokens: false)
-  rescue StandardError => e
-    Rails.logger.error "[ConversationCompletionJob] Automatic compaction failed: #{e.class}: #{e.message}"
   end
 
   def record_context_tokens(result)
@@ -111,10 +109,11 @@ class ConversationCompletionJob < ApplicationJob
       html: ERB::Util.html_escape(delta)
   end
 
-  def discard_message
-    return unless @message && !@finalized
-    @message.destroy!
-    @message = nil
+  def finish_failed_turn
+    return if @finalized
+    @message.destroy! if @message
+    broadcast_frame(show_progress: false)
+    broadcast_error
   end
 
   def broadcast_error

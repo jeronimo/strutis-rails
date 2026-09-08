@@ -64,6 +64,7 @@ class ConversationCompactionService
     result = OpenaiService.completion(@conversation.prompt_messages, @conversation.model, @conversation.public_id, tools: OpenaiService.tools, max_tokens: 1)
     @conversation.update_column(:context_tokens, result[:prompt_tokens].to_i) if result[:prompt_tokens]
   rescue StandardError => e
-    Rails.logger.error "[ConversationCompactionService] Context measurement failed: #{e.class}: #{e.message}"
+    Sentry.capture_exception(e)
+    Rails.logger.error { "[ConversationCompactionService] Context measurement failed: #{e.full_message}" }
   end
 end

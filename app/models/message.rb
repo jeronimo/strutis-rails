@@ -16,7 +16,8 @@ class Message < ApplicationRecord
   def display_content
     return content unless role == 'tool'
     JSON.pretty_generate(JSON.parse(content))
-  rescue JSON::ParserError
+  rescue JSON::ParserError => e
+    Rails.logger.debug { "[Message] Malformed tool JSON in message #{id}: #{e.message}" }
     content
   end
 
@@ -24,7 +25,8 @@ class Message < ApplicationRecord
     return unless role == 'tool'
     parsed = JSON.parse(content)
     parsed['query'] || parsed['url'] if parsed.is_a?(Hash)
-  rescue JSON::ParserError
+  rescue JSON::ParserError => e
+    Rails.logger.debug { "[Message] Malformed tool JSON in message #{id}: #{e.message}" }
     nil
   end
 

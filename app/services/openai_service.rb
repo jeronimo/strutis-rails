@@ -3,6 +3,8 @@ require 'uri'
 require 'json'
 
 class OpenaiService
+  class Error < StandardError; end
+
   def self.configure
     creds = Rails.application.credentials.openai_api
     @host = creds[:host]
@@ -60,7 +62,7 @@ class OpenaiService
     configure
     name = tool_call.dig(:function, :name)
     definition = tools.find { |tool| tool.dig(:function, :name) == name }
-    raise "Unknown tool: #{name}" unless definition
+    raise Error, "Unknown tool: #{name}" unless definition
 
     uri = URI(definition[:endpoint])
     http = Net::HTTP.new(uri.host, uri.port)
@@ -72,10 +74,10 @@ class OpenaiService
     request.body = JSON.parse(tool_call.dig(:function, :arguments).to_s).to_json
 
     response = http.request(request)
-    raise "Tool error: #{response.code} - #{response.message}" unless response.is_a?(Net::HTTPSuccess)
+    raise Error, "Tool error: #{response.code} - #{response.message}" unless response.is_a?(Net::HTTPSuccess)
 
     body = response.body.force_encoding(Encoding::UTF_8)
-    raise 'Tool response is not valid UTF-8' unless body.valid_encoding?
+    raise Error, 'Tool response is not valid UTF-8' unless body.valid_encoding?
     body
   end
 
@@ -103,7 +105,7 @@ class OpenaiService
     response = http.request(request)
 
     log_response(response)
-    raise "OpenAI API error: #{response.code} - #{response.message}" unless response.is_a?(Net::HTTPSuccess)
+    raise Error, "OpenAI API error: #{response.code} - #{response.message}" unless response.is_a?(Net::HTTPSuccess)
 
     JSON.parse(response.body, symbolize_names: true)
   end
@@ -117,7 +119,7 @@ class OpenaiService
     buffer = +''
 
     http.request(request) do |response|
-      raise "OpenAI API error: #{response.code} - #{response.message}" unless response.is_a?(Net::HTTPSuccess)
+      raise Error, "OpenAI API error: #{response.code} - #{response.message}" unless response.is_a?(Net::HTTPSuccess)
 
       response.read_body do |chunk|
         buffer << chunk

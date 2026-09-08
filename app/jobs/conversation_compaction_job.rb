@@ -3,12 +3,16 @@ class ConversationCompactionJob < ApplicationJob
     @conversation = Conversation.find_by(id: conversation_id)
     return unless @conversation
 
-    ConversationCompactionService.perform(@conversation)
-    ConversationChannel.broadcast_frame(@conversation, show_progress: false)
-  rescue StandardError => e
-    Rails.logger.error "[ConversationCompactionJob] #{e.class}: #{e.message}"
-    ConversationChannel.broadcast_frame(@conversation, show_progress: false) if @conversation
-    broadcast_error if @conversation
+    compacted = false
+    begin
+      compacted = ConversationCompactionService.perform(@conversation)
+    ensure
+      if compacted
+        ConversationChannel.broadcast_frame(@conversation, show_progress: false)
+      else
+        broadcast_error
+      end
+    end
   end
 
   private
