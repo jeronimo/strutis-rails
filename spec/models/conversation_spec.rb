@@ -69,7 +69,7 @@ RSpec.describe Conversation, type: :model do
   end
 
   describe '#prompt_messages' do
-    it 'keeps system messages first, includes summary, and excludes compacted and compaction messages' do
+    it 'keeps system messages first, wraps the summary in a compaction marker, and excludes compacted and compaction messages' do
       conversation.update!(summary: 'summary')
       conversation.messages.create!(role: 'system', content: 'rules')
       old_user = conversation.messages.create!(role: 'user', content: 'old')
@@ -78,11 +78,13 @@ RSpec.describe Conversation, type: :model do
       conversation.messages.create!(role: 'user', content: 'new')
       [ old_user, old_assistant ].each { |message| message.update!(compacted_at: Time.current) }
 
-      expect(conversation.prompt_messages).to eq([
-        { role: 'system', content: 'rules' },
-        { role: 'system', content: 'summary' },
-        { role: 'user', content: 'new' }
-      ])
+      entries = conversation.prompt_messages
+      expect(entries.size).to eq(3)
+      expect(entries[0]).to eq({ role: 'system', content: 'rules' })
+      expect(entries[1][:role]).to eq('system')
+      expect(entries[1][:content]).to include('summary')
+      expect(entries[1][:content]).to include('lossy')
+      expect(entries[2]).to eq({ role: 'user', content: 'new' })
     end
   end
 end

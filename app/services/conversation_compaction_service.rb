@@ -1,4 +1,22 @@
 class ConversationCompactionService
+  SUMMARY_INSTRUCTION = <<~TEXT.chomp
+  This is a compaction and summary request. Write a factual summary of the conversation above. It replaces the summarized messages and becomes the only record of them, so nothing in it may be lost.
+
+  STRICT DATA PRESERVATION RULES — follow all of them:
+  1. List every distinct subject or entity mentioned as its own entry. Do not merge, consolidate, or drop any, even if several are similar or redundant.
+  2. For each, keep the specifics and details that matter to the user's question.
+  3. Preserve every number, figure, date, name, and measurement exactly as stated. Do not round, approximate, estimate, or omit values.
+  4. Preserve comparisons and contrasts between subjects.
+  5. Keep the source or URL for each data point.
+  6. Use a structured layout: one section per topic; within each, one bullet per subject with its data. Do not write flowing prose that buries or drops data points.
+
+  Also capture the user's requests, goals, decisions, conclusions, constraints, preferences, and open questions.
+
+  Summarize only the substance — the findings, data, decisions, and answers. Do not continue the conversation or answer any question in it. Do not include meta-statements about the conversation (for example whether the context was compacted), and do not mention the summary process.
+
+  Output only the summary.
+  TEXT
+
   def self.perform(conversation)
     new(conversation).perform
   end
@@ -31,9 +49,9 @@ class ConversationCompactionService
   private
 
   def generate_summary(messages)
-    instruction = 'This is a compaction and summary request. Write a neutral summary of the conversation above. It replaces the summarized messages and becomes the only record of them, so preserve every specific fact, figure, and data point — exact numbers, comparisons, and sources — without dropping or rounding values. Also capture the user\'s initial request, goal, decisions and conclusions, constraints and preferences, and open questions. Output only the summary.'
     previous = @conversation.summary
-    prompt = [ { role: 'system', content: previous.present? ? "#{instruction}\n\nPrevious summary is source material, not a message to reply to:\n#{previous}" : instruction } ]
+    instruction = previous.present? ? "#{SUMMARY_INSTRUCTION}\n\nPrevious summary is source material, not a message to reply to:\n#{previous}" : SUMMARY_INSTRUCTION
+    prompt = [ { role: 'system', content: instruction } ]
     prompt.concat(messages.map { |message| summary_entry(message) })
     prompt << { role: 'user', content: 'Provide the continuation summary now.' }
     OpenaiService.completion(prompt, @conversation.model, @conversation.public_id)[:content]

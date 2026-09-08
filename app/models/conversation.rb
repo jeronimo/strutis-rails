@@ -41,7 +41,7 @@ class Conversation < ApplicationRecord
   def prompt_messages
     active = messages.where(compacted_at: nil).where.not(role: 'compaction').to_a
     entries = active.select { |message| message.role == 'system' }.map(&:to_prompt_entry)
-    entries << { role: 'system', content: summary } if summary.present?
+    entries << { role: 'system', content: compaction_digest } if summary.present?
     entries.concat(active.reject { |message| message.role == 'system' }.map(&:to_prompt_entry))
     entries
   end
@@ -60,6 +60,15 @@ class Conversation < ApplicationRecord
     source = messages.loaded? ? messages.to_a : messages.where(role: 'assistant').where.not(tool_calls: nil).load
     source
       .flat_map { |message| Array(message.tool_calls) }
-      .to_h { |tool_call| [ tool_call['id'], tool_call.dig('function', 'name') ] }
+      .to_h { |tool_call| [ tool_call['id'], tool_call.dig('function', :name) ] }
+  end
+
+  def compaction_digest
+    <<~TEXT.chomp
+    CONTEXT COMPACTION: Earlier messages in this conversation were summarized to fit the context window. The digest below is now their only record. It is a lossy digest, not the raw history: exact figures, full lists, ratings, prices, and sources may be missing, rounded, or incomplete. Do not assume you still have the original detail. When an answer needs a specific value or a complete list the digest does not clearly contain, re-run the relevant tool (for example web search) to recover it instead of relying on the digest.
+
+    DIGEST:
+    #{summary}
+    TEXT
   end
 end
