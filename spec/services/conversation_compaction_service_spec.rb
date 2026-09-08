@@ -9,8 +9,7 @@ RSpec.describe ConversationCompactionService do
     old_user = conversation.messages.create!(role: 'user', content: 'old')
     old_assistant = conversation.messages.create!(role: 'assistant', content: 'old reply')
     new_user = conversation.messages.create!(role: 'user', content: 'new')
-    allow(OpenaiService).to receive(:tools).and_return([])
-    allow(OpenaiService).to receive(:completion).and_return(content: 'summary', prompt_tokens: 10)
+    allow(OpenaiService).to receive(:completion).and_return(content: 'summary')
 
     expect(described_class.perform(conversation)).to be true
 
@@ -19,7 +18,6 @@ RSpec.describe ConversationCompactionService do
     expect(old_assistant.reload.compacted_at).to be_present
     expect(new_user.reload.compacted_at).to be_nil
     expect(conversation.reload.summary).to eq('summary')
-    expect(conversation.context_tokens).to eq(10)
 
     compaction_message = conversation.messages.where(role: 'compaction').last
     expect(compaction_message).to be_present
@@ -37,15 +35,13 @@ RSpec.describe ConversationCompactionService do
     expect(conversation.messages.where(role: 'compaction')).to be_empty
   end
 
-  it 'skips context measurement when refresh_tokens is false' do
+  it 'raises when the summary is empty' do
     conversation.messages.create!(role: 'user', content: 'old')
     conversation.messages.create!(role: 'assistant', content: 'old reply')
     conversation.messages.create!(role: 'user', content: 'new')
-    allow(OpenaiService).to receive(:completion).and_return(content: 'summary', prompt_tokens: 10)
+    allow(OpenaiService).to receive(:completion).and_return(content: '')
 
-    expect(described_class.perform(conversation, refresh_tokens: false)).to be true
-    expect(OpenaiService).to have_received(:completion).once
-    expect(conversation.reload.context_tokens).to eq(0)
-    expect(conversation.messages.where(role: 'compaction').count).to eq(1)
+    expect { described_class.perform(conversation) }.to raise_error(RuntimeError, 'Compaction summary is empty')
+    expect(conversation.messages.where(role: 'compaction')).to be_empty
   end
 end

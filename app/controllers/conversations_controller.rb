@@ -84,7 +84,7 @@ class ConversationsController < ApplicationController
 
   def handle_compact(model, public_id)
     conversation = current_user.conversations.find_by(public_id: public_id)
-    unless conversation && conversation.messages.where(role: 'user').where(compacted_at: nil).exists?
+    unless conversation&.compactable?
       render_conversation_error('Nothing to compact yet.', :unprocessable_entity)
       return
     end

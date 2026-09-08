@@ -19,6 +19,6 @@ class LatenciesController < ApplicationController
   rescue StandardError => e
     Sentry.capture_exception(e)
     Rails.logger.error { "[LatenciesController] #{e.full_message}" }
-    render json: { latency: nil, error: 'Hiding' }, status: 500
+    render json: { latency: nil, error: 'Health check failed' }, status: 500
   end
 end

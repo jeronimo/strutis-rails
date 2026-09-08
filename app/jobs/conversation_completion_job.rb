@@ -4,6 +4,7 @@ class ConversationCompletionJob < ApplicationJob
     return unless @conversation
 
     @finalized = false
+    @conversation.update_column(:last_error, nil)
     begin
       run_completion
     ensure
@@ -52,30 +53,25 @@ class ConversationCompletionJob < ApplicationJob
     broadcast_frame(show_progress: true)
     result[:tool_calls].each do |tool_call|
       start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      tool_result = execute_tool(tool_call, tools)
+      tool_result = OpenaiService.execute_tool(tool_call, tools)
       tool_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
       @conversation.messages.create!(role: 'tool', tool_call_id: tool_call[:id], content: tool_result, latency_ms: tool_ms, inference_ms: tool_ms, model: @conversation.model)
     end
     broadcast_frame(show_progress: true)
   end
 
-  def execute_tool(tool_call, tools)
-    OpenaiService.execute_tool(tool_call, tools)
-  rescue OpenaiService::Error, JSON::ParserError, Timeout::Error, SystemCallError, SocketError, Net::HTTPError => e
-    Sentry.capture_exception(e)
-    Rails.logger.error { "[ConversationCompletionJob] Tool #{tool_call.dig(:function, :name)} failed: #{e.full_message}" }
-    { error: e.message }.to_json
-  end
-
   def compact_conversation
-    ConversationCompactionService.perform(@conversation, refresh_tokens: false)
+    ConversationCompactionService.perform(@conversation)
   end
 
   def record_context_tokens(result)
-    return unless result[:prompt_tokens]
-    context_tokens = result[:prompt_tokens].to_i + result[:completion_tokens].to_i
-    @conversation.context_tokens = context_tokens
-    @conversation.update_column(:context_tokens, context_tokens)
+    if result[:prompt_tokens]
+      context_tokens = result[:prompt_tokens].to_i + result[:completion_tokens].to_i
+      @conversation.context_tokens = context_tokens
+      @conversation.update_column(:context_tokens, context_tokens)
+    else
+      Rails.logger.error { '[ConversationCompletionJob] Usage missing from stream; context_tokens not updated' }
+    end
   end
 
   def accumulate_metrics(metrics, result)
@@ -112,6 +108,7 @@ class ConversationCompletionJob < ApplicationJob
   def finish_failed_turn
     return if @finalized
     @message.destroy! if @message
+    @conversation.update_column(:last_error, 'Completion failed. Please try again.')
     broadcast_frame(show_progress: false)
     broadcast_error
   end
@@ -119,6 +116,6 @@ class ConversationCompletionJob < ApplicationJob
   def broadcast_error
     ConversationChannel.broadcast_replace_to @conversation,
       target: 'conversation-error',
-      html: ApplicationController.render(partial: 'conversations/error', locals: { error: 'Completion failed.' }, formats: :html)
+      html: ApplicationController.render(partial: 'conversations/error', locals: { error: 'Completion failed. Please try again.' }, formats: :html)
   end
 end

@@ -24,7 +24,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
 
     described_class.perform_now(conversation.id)
 
-    expect(ConversationCompactionService).to have_received(:perform).with(a_kind_of(Conversation), hash_including(refresh_tokens: false))
+    expect(ConversationCompactionService).to have_received(:perform).with(a_kind_of(Conversation))
     expect(conversation.messages.reload.where(role: 'assistant').last&.content).to eq('hello')
   end
 
@@ -37,5 +37,33 @@ RSpec.describe ConversationCompletionJob, type: :job do
 
     expect(ConversationCompactionService).not_to have_received(:perform)
     expect(conversation.messages.reload.where(role: 'assistant').last&.content).to eq('hello')
+  end
+
+  it 'persists last_error, drops the partial message, and broadcasts the error when completion fails' do
+    conversation.update!(context_tokens: 0)
+    conversation.messages.create!(role: 'user', content: 'new')
+    allow(OpenaiService).to receive(:completion) do |_messages, _model, _conversation_id, **_options, &block|
+      block&.call('partial')
+      raise OpenaiService::Error, 'boom'
+    end
+
+    expect { described_class.perform_now(conversation.id) }.to raise_error(OpenaiService::Error)
+
+    expect(conversation.reload.last_error).to eq('Completion failed. Please try again.')
+    expect(conversation.messages.where(role: 'assistant')).to be_empty
+    expect(ConversationChannel).to have_received(:broadcast_replace_to)
+  end
+
+  it 'keeps the last known context_tokens when usage is missing from the stream' do
+    conversation.update!(context_tokens: 50)
+    conversation.messages.create!(role: 'user', content: 'new')
+    allow(OpenaiService).to receive(:completion) do |_messages, _model, _conversation_id, **_options, &block|
+      block&.call('hello')
+      { content: 'hello', tool_calls: [], latency_ms: 1, inference_ms: 1 }
+    end
+
+    described_class.perform_now(conversation.id)
+
+    expect(conversation.reload.context_tokens).to eq(50)
   end
 end

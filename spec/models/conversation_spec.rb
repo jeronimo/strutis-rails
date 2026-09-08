@@ -31,6 +31,20 @@ RSpec.describe Conversation, type: :model do
     end
   end
 
+  describe '#compactable?' do
+    it 'is false when there is nothing before the last user message' do
+      conversation.messages.create!(role: 'user', content: 'only')
+      expect(conversation.compactable?).to be false
+    end
+
+    it 'is true when compactable messages exist before the last user message' do
+      conversation.messages.create!(role: 'user', content: 'old')
+      conversation.messages.create!(role: 'assistant', content: 'old reply')
+      conversation.messages.create!(role: 'user', content: 'new')
+      expect(conversation.compactable?).to be true
+    end
+  end
+
   describe '#chat_template_kwargs' do
     it 'returns nil when the model has no chat_template_kwargs' do
       allow(OpenaiService).to receive(:chat_template_kwargs).with('test-model').and_return(nil)

@@ -3,6 +3,8 @@ require 'uri'
 require 'json'
 
 class OpenaiService
+  STREAM_READ_TIMEOUT = 3600
+
   class Error < StandardError; end
 
   MODELS_TTL = 600
@@ -118,6 +120,7 @@ class OpenaiService
 
   def self.stream_request(path, body, conversation_id, timing, usage)
     http, uri, request = build_request('POST', path, body, conversation_id)
+    http.read_timeout = STREAM_READ_TIMEOUT
     log_request(request, uri, body)
 
     start = Process.clock_gettime(Process::CLOCK_MONOTONIC)

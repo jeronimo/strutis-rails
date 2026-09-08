@@ -24,6 +24,12 @@ class Conversation < ApplicationRecord
     window.to_i.positive? && context_tokens.to_f / window > COMPACT_THRESHOLD
   end
 
+  def compactable?
+    last_user_message = messages.where(compacted_at: nil).where(role: 'user').order(:id).last
+    return false unless last_user_message
+    messages.where(compacted_at: nil).where.not(role: [ 'system', 'compaction' ]).where('id < ?', last_user_message.id).exists?
+  end
+
   def chat_template_kwargs
     kwargs = OpenaiService.chat_template_kwargs(model)
     return unless kwargs

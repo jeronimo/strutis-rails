@@ -1,11 +1,10 @@
 class ConversationCompactionService
-  def self.perform(conversation, refresh_tokens: true)
-    new(conversation, refresh_tokens:).perform
+  def self.perform(conversation)
+    new(conversation).perform
   end
 
-  def initialize(conversation, refresh_tokens: true)
+  def initialize(conversation)
     @conversation = conversation
-    @refresh_tokens = refresh_tokens
   end
 
   def perform
@@ -17,7 +16,7 @@ class ConversationCompactionService
     return false if compacted_messages.empty?
 
     summary = generate_summary(compacted_messages)
-    return false if summary.blank?
+    raise 'Compaction summary is empty' if summary.blank?
 
     compacted_at = Time.current
     duration_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
@@ -26,7 +25,6 @@ class ConversationCompactionService
       @conversation.update!(summary: summary)
       @conversation.messages.create!(role: 'compaction', content: summary, compacted_at: compacted_at, latency_ms: duration_ms, inference_ms: duration_ms, model: @conversation.model)
     end
-    refresh_context_tokens if @refresh_tokens
     true
   end
 
@@ -58,13 +56,5 @@ class ConversationCompactionService
       parts.concat(message.tool_calls.map { |tool_call| "Tool call: #{tool_call.dig('function', 'name')} #{tool_call.dig('function', 'arguments')}" })
     end
     parts.reject { |part| part.blank? }.join("\n")
-  end
-
-  def refresh_context_tokens
-    result = OpenaiService.completion(@conversation.prompt_messages, @conversation.model, @conversation.public_id, tools: OpenaiService.tools, max_tokens: 1)
-    @conversation.update_column(:context_tokens, result[:prompt_tokens].to_i) if result[:prompt_tokens]
-  rescue StandardError => e
-    Sentry.capture_exception(e)
-    Rails.logger.error { "[ConversationCompactionService] Context measurement failed: #{e.full_message}" }
   end
 end
