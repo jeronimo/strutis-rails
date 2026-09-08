@@ -52,16 +52,18 @@ class OpenaiService
     timing = {}
     usage = {}
     content = +''
+    reasoning = +''
     tool_calls = {}
     stream_request('/v1/chat/completions', request_body, conversation_id, timing, usage) do |delta|
       if delta[:content].present?
         content << delta[:content]
         yield delta[:content] if block_given?
       end
+      reasoning << delta[:reasoning] if delta[:reasoning].present?
       accumulate_tool_calls(tool_calls, delta[:tool_calls])
     end
 
-    { content: content, tool_calls: normalize_tool_calls(tool_calls), latency_ms: timing[:latency_ms], inference_ms: timing[:inference_ms],
+    { content: content, reasoning: reasoning.presence, tool_calls: normalize_tool_calls(tool_calls), latency_ms: timing[:latency_ms], inference_ms: timing[:inference_ms],
       prompt_tokens: usage[:prompt_tokens], completion_tokens: usage[:completion_tokens],
       reasoning_tokens: usage.dig(:completion_tokens_details, :reasoning_tokens) }
   end
@@ -124,11 +126,11 @@ class OpenaiService
     log_request(request, uri, body)
 
     start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    first_token = nil
+    first_content = nil
     buffer = +''
 
     http.request(request) do |response|
-      raise Error, "OpenAI API error: #{response.code} - #{response.message}" unless response.is_a?(Net::HTTPSuccess)
+      raise Error, "OpenAI API error: #{response.code} #{response.message}" unless response.is_a?(Net::HTTPSuccess)
 
       response.read_body do |chunk|
         buffer << chunk
@@ -137,7 +139,7 @@ class OpenaiService
           event = buffer[0...separator]
           buffer = buffer[(separator + 2)..]
           parse_sse_event(event, usage) do |delta|
-            first_token ||= Process.clock_gettime(Process::CLOCK_MONOTONIC)
+            first_content ||= Process.clock_gettime(Process::CLOCK_MONOTONIC) if delta[:content].present?
             yield delta
           end
         end
@@ -145,9 +147,9 @@ class OpenaiService
     end
 
     finish = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    first_token ||= finish
+    first_content ||= finish
     timing[:latency_ms] = ms(finish - start)
-    timing[:inference_ms] = ms(first_token - start)
+    timing[:inference_ms] = ms(first_content - start)
   end
 
   def self.parse_sse_event(event, usage)

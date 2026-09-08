@@ -84,7 +84,7 @@ class ConversationCompletionJob < ApplicationJob
 
   def finalize(result, metrics)
     if @message
-      @message.update!(content: result[:content], latency_ms: metrics[:latency_ms], inference_ms: metrics[:inference_ms],
+      @message.update!(content: result[:content], reasoning: result[:reasoning], latency_ms: metrics[:latency_ms], inference_ms: metrics[:inference_ms],
         prompt_tokens: metrics[:prompt_tokens], completion_tokens: metrics[:completion_tokens],
         reasoning_tokens: metrics[:reasoning_tokens])
       @finalized = true
