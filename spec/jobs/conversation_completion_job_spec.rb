@@ -9,7 +9,6 @@ RSpec.describe ConversationCompletionJob, type: :job do
     allow(OpenaiService).to receive(:chat_template_kwargs).and_return(nil)
     allow(OpenaiService).to receive(:tools).and_return([])
     allow(ConversationChannel).to receive(:broadcast_frame)
-    allow(ConversationChannel).to receive(:broadcast_replace_to)
     allow(OpenaiService).to receive(:completion) do |_messages, _model, _conversation_id, **_options, &block|
       block&.call('hello')
       { content: 'hello', tool_calls: [], latency_ms: 1, inference_ms: 1, prompt_tokens: 10, completion_tokens: 2, reasoning_tokens: 0 }
@@ -51,7 +50,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
 
     expect(conversation.reload.last_error).to eq('Completion failed. Please try again.')
     expect(conversation.messages.where(role: 'assistant')).to be_empty
-    expect(ConversationChannel).to have_received(:broadcast_replace_to)
+    expect(ConversationChannel).to have_received(:broadcast_frame).at_least(:once)
   end
 
   it 'keeps the last known context_tokens when usage is missing from the stream' do

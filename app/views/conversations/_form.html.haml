@@ -7,8 +7,6 @@
         - else
           = turbo_frame_tag 'messages', data: { conversation_target: 'messages' }
     .flex-shrink-0#conversation-error
-      - if conversation&.last_error.present?
-        = render 'conversations/error', error: conversation.last_error
     = form_with url: conversations_path, method: :post, html: { id: 'conversation-form', class: 'flex-shrink-0' },
       data: { conversation_target: 'form', action: 'turbo:submit-start->conversation#disableForm turbo:submit-end->conversation#handleSubmitEnd' } do
       = render 'conversations/conversation_hidden_fields', conversation: conversation

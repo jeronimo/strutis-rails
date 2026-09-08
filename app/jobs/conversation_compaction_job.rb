@@ -10,16 +10,10 @@ class ConversationCompactionJob < ApplicationJob
       if compacted
         ConversationChannel.broadcast_frame(@conversation, show_progress: false)
       else
-        broadcast_error
+        @conversation.last_error = 'Compaction failed.'
+        @conversation.update_column(:last_error, @conversation.last_error)
+        ConversationChannel.broadcast_frame(@conversation, show_progress: false)
       end
     end
-  end
-
-  private
-
-  def broadcast_error
-    ConversationChannel.broadcast_replace_to @conversation,
-      target: 'conversation-error',
-      html: ApplicationController.render(partial: 'conversations/error', locals: { error: 'Compaction failed.' }, formats: :html)
   end
 end

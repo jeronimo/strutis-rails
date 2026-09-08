@@ -4,3 +4,5 @@
   - if show_progress
     = render 'conversations/progress', conversation: conversation
   = render 'conversations/context_usage', conversation: conversation
+  - if conversation.last_error.present?
+    = render 'conversations/error', error: conversation.last_error

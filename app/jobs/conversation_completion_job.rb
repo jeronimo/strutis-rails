@@ -89,9 +89,6 @@ class ConversationCompletionJob < ApplicationJob
         reasoning_tokens: metrics[:reasoning_tokens])
       @finalized = true
       broadcast_frame(show_progress: false)
-    else
-      broadcast_frame(show_progress: false)
-      broadcast_error
     end
   end
 
@@ -108,14 +105,8 @@ class ConversationCompletionJob < ApplicationJob
   def finish_failed_turn
     return if @finalized
     @message.destroy! if @message
-    @conversation.update_column(:last_error, 'Completion failed. Please try again.')
+    @conversation.last_error = 'Completion failed. Please try again.'
+    @conversation.update_column(:last_error, @conversation.last_error)
     broadcast_frame(show_progress: false)
-    broadcast_error
-  end
-
-  def broadcast_error
-    ConversationChannel.broadcast_replace_to @conversation,
-      target: 'conversation-error',
-      html: ApplicationController.render(partial: 'conversations/error', locals: { error: 'Completion failed. Please try again.' }, formats: :html)
   end
 end
