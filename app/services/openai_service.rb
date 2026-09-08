@@ -5,6 +5,8 @@ require 'json'
 class OpenaiService
   class Error < StandardError; end
 
+  MODELS_TTL = 600
+
   def self.configure
     creds = Rails.application.credentials.openai_api
     @host = creds[:host]
@@ -15,7 +17,11 @@ class OpenaiService
   end
 
   def self.models
-    @models ||= request('GET', '/v1/models', nil)[:data] || []
+    if @models.nil? || (Time.now - @models_fetched_at) > MODELS_TTL
+      @models = request('GET', '/v1/models', nil)[:data] || []
+      @models_fetched_at = Time.now
+    end
+    @models
   end
 
   def self.model(model_id)
