@@ -21,7 +21,7 @@ class ConversationCompletionJob < ApplicationJob
       compact_conversation if @conversation.compaction_needed?
       result = stream_turn(tools)
       accumulate_metrics(metrics, result)
-      @conversation.update_column(:context_tokens, result[:prompt_tokens].to_i + result[:completion_tokens].to_i)
+      record_context_tokens(result)
       if result[:tool_calls].present?
         record_tool_turn(result, tools)
         next
@@ -71,6 +71,13 @@ class ConversationCompletionJob < ApplicationJob
     ConversationCompactionService.perform(@conversation, refresh_tokens: false)
   rescue StandardError => e
     Rails.logger.error "[ConversationCompletionJob] Automatic compaction failed: #{e.class}: #{e.message}"
+  end
+
+  def record_context_tokens(result)
+    return unless result[:prompt_tokens]
+    context_tokens = result[:prompt_tokens].to_i + result[:completion_tokens].to_i
+    @conversation.context_tokens = context_tokens
+    @conversation.update_column(:context_tokens, context_tokens)
   end
 
   def accumulate_metrics(metrics, result)
