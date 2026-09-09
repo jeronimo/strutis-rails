@@ -32,12 +32,6 @@
   min-height: 0;
 }
 
-.chat-column {
-  width: 100%;
-  max-width: 48rem;
-  margin-inline: auto;
-}
-
 .chat-bubble {
   white-space: normal;
   overflow-wrap: break-word;
