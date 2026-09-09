@@ -1,5 +1,6 @@
 class Conversation < ApplicationRecord
   COMPACT_THRESHOLD = 0.8
+  TITLE_PLACEHOLDER_LENGTH = 60
 
   belongs_to :user
   has_many :messages, -> { order(:id) }, dependent: :destroy
@@ -30,6 +31,11 @@ class Conversation < ApplicationRecord
     messages.where(compacted_at: nil).where.not(role: [ 'system', 'compaction' ]).where('id < ?', last_user_message.id).exists?
   end
 
+  def title_generation_needed?
+    first_user_message = messages.where(role: 'user').first
+    first_user_message && title == first_user_message.content[0, TITLE_PLACEHOLDER_LENGTH]
+  end
+
   def chat_template_kwargs
     kwargs = OpenaiService.chat_template_kwargs(model)
     return unless kwargs
@@ -41,8 +47,8 @@ class Conversation < ApplicationRecord
   def prompt_messages
     active = messages.where(compacted_at: nil).where.not(role: 'compaction').to_a
     entries = active.select { |message| message.role == 'system' }.map(&:to_prompt_entry)
-    digest = compaction_digest
-    entries << { role: 'system', content: digest } if summary.present? && digest.present?
+    digest = compaction_digest if summary.present?
+    entries << { role: 'system', content: digest } if digest.present?
     entries.concat(active.reject { |message| message.role == 'system' }.map(&:to_prompt_entry))
     entries
   end

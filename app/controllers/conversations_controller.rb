@@ -101,7 +101,7 @@ class ConversationsController < ApplicationController
     if public_id
       current_user.conversations.find_by(public_id: public_id)
     else
-      conversation = current_user.conversations.create!(title: message[0, 60], model: model)
+      conversation = current_user.conversations.create!(title: message[0, Conversation::TITLE_PLACEHOLDER_LENGTH], model: model)
       system_content = current_user.effective_prompt('system')
       conversation.messages.create!(role: 'system', content: system_content, model: model) if system_content.present?
       conversation

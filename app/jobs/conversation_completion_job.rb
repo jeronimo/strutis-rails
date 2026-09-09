@@ -10,6 +10,7 @@ class ConversationCompletionJob < ApplicationJob
     ensure
       finish_failed_turn
     end
+    ConversationTitleJob.perform_later(@conversation.id) if @finalized && @conversation.title_generation_needed?
   end
 
   private
