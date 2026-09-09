@@ -1,5 +1,5 @@
 .new-conversation-layout.d-flex.flex-column
-  .system-prompt-section.border.rounded.p-3.mb-3.flex-shrink-0.overflow-auto
+  .system-prompt-section.border.rounded.p-3.mb-3.flex-shrink-0.overflow-auto{ id: 'system-prompt-section' }
     .d-flex.align-items-center.justify-content-between.mb-2
       %strong.text-muted System prompt
       = link_to 'Edit', edit_users_prompt_path, class: 'btn btn-sm btn-link text-decoration-none'
