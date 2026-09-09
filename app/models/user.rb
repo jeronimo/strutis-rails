@@ -5,6 +5,7 @@ class User < ApplicationRecord
          :recoverable, :rememberable, :validatable, :trackable, :timeoutable, :lockable
 
   has_many :conversations, dependent: :destroy
+  has_many :prompts, dependent: :destroy
 
   before_create { self.authentication_token = SecureRandom.hex(20) if authentication_token.blank? }
 
@@ -18,5 +19,9 @@ class User < ApplicationRecord
 
   def password_required?
     !persisted? || password.present? || password_confirmation.present?
+  end
+
+  def effective_prompt(key)
+    prompts.find_by(key: key)&.content || Prompt.global(key)
   end
 end

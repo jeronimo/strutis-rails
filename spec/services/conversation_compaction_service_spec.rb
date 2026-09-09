@@ -4,6 +4,10 @@ RSpec.describe ConversationCompactionService do
   let(:user) { User.create!(email: 'compaction-user@example.com', password: 'password123') }
   let(:conversation) { user.conversations.create!(model: 'test-model') }
 
+  before do
+    Prompt.create!(key: 'compacting', user_id: nil, content: Prompt::COMPACTING_DEFAULT)
+  end
+
   it 'compacts old non-system messages and keeps system messages and the latest user turn' do
     system_message = conversation.messages.create!(role: 'system', content: 'rules')
     old_user = conversation.messages.create!(role: 'user', content: 'old')

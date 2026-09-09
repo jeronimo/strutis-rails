@@ -69,6 +69,10 @@ RSpec.describe Conversation, type: :model do
   end
 
   describe '#prompt_messages' do
+    before do
+      Prompt.create!(key: 'digest', user_id: nil, content: Prompt::DIGEST_DEFAULT)
+    end
+
     it 'keeps system messages first, wraps the summary in a compaction marker, and excludes compacted and compaction messages' do
       conversation.update!(summary: 'summary')
       conversation.messages.create!(role: 'system', content: 'rules')

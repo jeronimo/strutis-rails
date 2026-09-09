@@ -1,0 +1,16 @@
+%h5 Your System Prompt
+
+= form_with url: users_prompt_path, scope: :prompt, method: :patch do |f|
+  - if @prompt.errors.any?
+    .alert.alert-danger
+      %h4= pluralize(@prompt.errors.count, 'error') + ' prohibited this prompt from being saved:'
+      %ul
+        - @prompt.errors.full_messages.each do |message|
+          %li= message
+
+  = f.label :content, class: 'form-label mb-1'
+  = f.text_area :content, rows: 10, class: 'form-control', required: true
+
+  .mt-2
+    = f.submit 'Save', class: 'btn btn-sm btn-primary'
+    = link_to 'Back', new_conversation_path, class: 'btn btn-sm btn-secondary'

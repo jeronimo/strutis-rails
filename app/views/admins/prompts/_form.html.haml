@@ -1,0 +1,17 @@
+= form_with model: [ :admins, prompt ] do |f|
+  - if prompt.errors.any?
+    .alert.alert-danger
+      %h4= pluralize(prompt.errors.count, 'error') + ' prohibited this prompt from being saved:'
+      %ul
+        - prompt.errors.full_messages.each do |message|
+          %li= message
+
+  = f.label :key, class: 'form-label mb-1'
+  = f.text_field :key, class: 'form-control', required: true
+
+  = f.label :content, class: 'form-label mb-1'
+  = f.text_area :content, rows: 10, class: 'form-control', required: true
+
+  .mt-2
+    = f.submit(prompt.persisted? ? 'Update' : 'Create', class: 'btn btn-sm btn-primary')
+    = link_to 'Cancel', admins_prompts_path, class: 'btn btn-sm btn-secondary'

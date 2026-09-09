@@ -1,2 +1,8 @@
-= render 'conversations/form', models: @models, current_model: @current_model, conversation: @conversation,
-  current_thinking: @current_thinking, current_reasoning_effort: @current_reasoning_effort, reasoning_effort_options: @reasoning_effort_options
+.new-conversation-layout.d-flex.flex-column
+  .system-prompt-section.border.rounded.p-3.mb-3.flex-shrink-0.overflow-auto
+    .d-flex.align-items-center.justify-content-between.mb-2
+      %strong.text-muted System prompt
+      = link_to 'Edit', edit_users_prompt_path, class: 'btn btn-sm btn-link text-decoration-none'
+    .small.text-muted.style-whitespace-pre-wrap= current_user.effective_prompt('system')
+  = render 'conversations/form', models: @models, current_model: @current_model, conversation: @conversation,
+    current_thinking: @current_thinking, current_reasoning_effort: @current_reasoning_effort, reasoning_effort_options: @reasoning_effort_options

@@ -1,0 +1,24 @@
+%h5 Prompts
+
+- if @prompts.empty?
+  %p.text-muted No prompts found.
+- else
+  %p.text-muted Found #{@prompts.count} prompt(s)
+
+%table.table
+  %thead
+    %tr
+      %th Key
+      %th Content
+      %th Actions
+  %tbody
+    - @prompts.each do |prompt|
+      %tr
+        %td= prompt.key
+        %td= truncate(prompt.content, length: 100)
+        %td
+          = link_to 'Edit', edit_admins_prompt_path(prompt), class: 'btn btn-sm btn-outline-primary'
+          = link_to 'Destroy', admins_prompt_path(prompt), method: :delete, data: { turbo_method: :delete, turbo_confirm: 'Are you sure?' },
+            class: 'btn btn-sm btn-danger'
+
+= link_to 'New Prompt', new_admins_prompt_path, class: 'btn btn-sm btn-success'

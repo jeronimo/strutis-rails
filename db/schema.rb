@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_08_133000) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_09_073919) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -75,6 +75,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_133000) do
     t.index ["conversation_id"], name: "index_messages_on_conversation_id"
   end
 
+  create_table "prompts", force: :cascade do |t|
+    t.text "content", null: false
+    t.datetime "created_at", null: false
+    t.string "key", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.index ["key", "user_id"], name: "index_prompts_on_key_and_user_id"
+    t.index ["user_id"], name: "index_prompts_on_user_id"
+  end
+
   create_table "users", force: :cascade do |t|
     t.string "authentication_token"
     t.datetime "confirmation_sent_at"
@@ -106,4 +116,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_08_133000) do
 
   add_foreign_key "conversations", "users"
   add_foreign_key "messages", "conversations"
+  add_foreign_key "prompts", "users"
 end
