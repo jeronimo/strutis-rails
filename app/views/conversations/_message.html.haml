@@ -18,7 +18,7 @@
           · #{format_ms(message.latency_ms)}
       %pre.small.mb-0
         = message.display_content
-- elsif message.content.present?
+- elsif message.content.present? || (message.role == 'assistant' && message.reasoning.present?)
   .chat-message.mb-3{ id: "message-#{message.id}", class: message.role == 'user' ? 'chat-message-user' : nil }
     - if message.role == 'assistant' && message.reasoning.present?
       %details.chat-bubble.chat-tool{ id: "message-reasoning-#{message.id}" }
@@ -28,8 +28,9 @@
             · #{format_ms(message.inference_ms)}
         %pre.small.mb-0
           = message.reasoning
-    .chat-bubble{ id: "message-content-#{message.id}" }
-      = render_message_markdown(message.content)
+    - if message.content.present?
+      .chat-bubble{ id: "message-content-#{message.id}" }
+        = render_message_markdown(message.content)
     - if message.role == 'assistant' && message.latency_ms
       .chat-meta.small.text-muted
         = message_breakdown(message)

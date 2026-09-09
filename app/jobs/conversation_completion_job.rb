@@ -33,7 +33,7 @@ class ConversationCompletionJob < ApplicationJob
 
   def stream_turn(tools)
     @message = nil
-    OpenaiService.completion(@conversation.prompt_messages, @conversation.model, @conversation.public_id, tools: tools,
+    result = OpenaiService.completion(@conversation.prompt_messages, @conversation.model, @conversation.public_id, tools: tools,
       chat_template_kwargs: @conversation.chat_template_kwargs) do |delta|
       if @message.nil?
         @message = @conversation.messages.create!(role: 'assistant', content: delta, model: @conversation.model)
@@ -42,6 +42,11 @@ class ConversationCompletionJob < ApplicationJob
         broadcast_delta(delta)
       end
     end
+    if @message.nil? && result[:reasoning].present?
+      @message = @conversation.messages.create!(role: 'assistant', content: '', reasoning: result[:reasoning], model: @conversation.model)
+      broadcast_frame(show_progress: false)
+    end
+    result
   end
 
   def record_tool_turn(result, tools)
@@ -88,6 +93,10 @@ class ConversationCompletionJob < ApplicationJob
         prompt_tokens: metrics[:prompt_tokens], completion_tokens: metrics[:completion_tokens],
         reasoning_tokens: metrics[:reasoning_tokens])
       @finalized = true
+      if result[:content].blank? && result[:reasoning].present?
+        @conversation.last_error = "The model stopped after thinking for #{format_duration(metrics[:latency_ms])} without producing a response."
+        @conversation.update_column(:last_error, @conversation.last_error)
+      end
       broadcast_frame(show_progress: false)
     end
   end
@@ -108,5 +117,12 @@ class ConversationCompletionJob < ApplicationJob
     @conversation.last_error = 'Completion failed. Please try again.'
     @conversation.update_column(:last_error, @conversation.last_error)
     broadcast_frame(show_progress: false)
+  end
+
+  def format_duration(ms)
+    seconds = ms.to_i / 1000
+    minutes = seconds / 60
+    seconds %= 60
+    minutes.positive? ? "#{minutes}m #{seconds}s" : "#{seconds}s"
   end
 end
