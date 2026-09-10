@@ -1,0 +1,8 @@
+.chat-message.mb-3{ id: "message-#{message.id}" }
+  %details.chat-bubble.chat-tool{ id: "message-content-#{message.id}" }
+    %summary.small.text-muted
+      compacted
+      - if message.latency_ms
+        · #{format_ms(message.latency_ms)}
+    %pre.small.mb-0
+      = message.display_content

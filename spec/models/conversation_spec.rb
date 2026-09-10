@@ -91,4 +91,15 @@ RSpec.describe Conversation, type: :model do
       expect(entries[2]).to eq({ role: 'user', content: 'new' })
     end
   end
+
+  describe '#tool_call_names' do
+    it 'maps tool call ids to function names from assistant messages' do
+      conversation.messages.create!(role: 'assistant', content: '', tool_calls: [ { id: 'c1', type: 'function', function: { name: 'web-search', arguments: '{"query":"q"}' } } ])
+      expect(conversation.tool_call_names).to eq({ 'c1' => 'web-search' })
+    end
+
+    it 'returns an empty hash when there are no tool calls' do
+      expect(conversation.tool_call_names).to eq({})
+    end
+  end
 end

@@ -67,7 +67,7 @@ class Conversation < ApplicationRecord
     source = messages.loaded? ? messages.to_a : messages.where(role: 'assistant').where.not(tool_calls: nil).load
     source
       .flat_map { |message| Array(message.tool_calls) }
-      .to_h { |tool_call| [ tool_call['id'], tool_call.dig('function', :name) ] }
+      .to_h { |tool_call| [ tool_call['id'], tool_call.dig('function', 'name') ] }
   end
 
   def compaction_digest
