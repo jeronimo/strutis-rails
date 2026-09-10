@@ -47,6 +47,12 @@ class ConversationsController < ApplicationController
     render_conversation_created(conversation, user_message, new_conversation: public_id.blank?)
   end
 
+  def stop
+    conversation = current_user.conversations.find_by!(public_id: params[:id])
+    ConversationCompletionJob.request_stop(conversation.id)
+    render turbo_stream: turbo_stream.remove("conversation-progress-#{conversation.public_id}")
+  end
+
   def destroy
     conversation = current_user.conversations.find_by!(public_id: params[:id])
     conversation.destroy!

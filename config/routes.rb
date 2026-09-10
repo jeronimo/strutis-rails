@@ -27,7 +27,9 @@ Rails.application.routes.draw do
 
   get 'latency' => 'latencies#show'
 
-  resources :conversations, only: [ :new, :create, :show, :destroy ]
+  resources :conversations, only: [ :new, :create, :show, :destroy ] do
+    post 'stop', on: :member
+  end
 
   # Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
   get 'manifest' => 'rails/pwa#manifest', as: :pwa_manifest

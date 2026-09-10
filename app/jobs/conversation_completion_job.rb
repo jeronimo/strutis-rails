@@ -1,10 +1,21 @@
 class ConversationCompletionJob < ApplicationJob
+  @@stop_flags = {}
+
+  def self.request_stop(conversation_id)
+    @@stop_flags[conversation_id] = true
+  end
+
+  def self.stop_requested?(conversation_id)
+    @@stop_flags.delete(conversation_id)
+  end
+
   def perform(conversation_id)
     @conversation = Conversation.find_by(id: conversation_id)
     return unless @conversation
 
     @finalized = false
     @failure = nil
+    @stopped = false
     @conversation.update_column(:last_error, nil)
     begin
       run_completion
@@ -23,6 +34,10 @@ class ConversationCompletionJob < ApplicationJob
     tools = OpenaiService.tools
     metrics = { prompt_tokens: 0, completion_tokens: 0, reasoning_tokens: 0, latency_ms: 0, inference_ms: 0 }
     loop do
+      if self.class.stop_requested?(@conversation.id)
+        @stopped = true
+        break
+      end
       compact_conversation if @conversation.compaction_needed?
       result = stream_turn(tools)
       accumulate_metrics(metrics, result)
@@ -118,8 +133,14 @@ class ConversationCompletionJob < ApplicationJob
 
   def finish_failed_turn
     return if @finalized
-    @message.destroy! if @message
-    @conversation.last_error = @failure ? "Completion failed: #{@failure.message}" : 'Completion failed. Please try again.'
+    @message.destroy! if @message && !@stopped
+    @conversation.last_error = if @stopped
+      'Stopped by user.'
+    elsif @failure
+      "Completion failed: #{@failure.message}"
+    else
+      'Completion failed. Please try again.'
+    end
     @conversation.update_column(:last_error, @conversation.last_error)
     broadcast_frame(show_progress: false)
   end
