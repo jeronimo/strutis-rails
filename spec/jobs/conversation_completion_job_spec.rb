@@ -38,7 +38,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
     expect(conversation.messages.reload.where(role: 'assistant').last&.content).to eq('hello')
   end
 
-  it 'persists last_error, drops the partial message, and broadcasts the error when completion fails' do
+  it 'persists the error message, drops the partial message, and broadcasts the error when completion fails' do
     conversation.update!(context_tokens: 0)
     conversation.messages.create!(role: 'user', content: 'new')
     allow(OpenaiService).to receive(:completion) do |_messages, _model, _conversation_id, **_options, &block|
@@ -46,9 +46,9 @@ RSpec.describe ConversationCompletionJob, type: :job do
       raise OpenaiService::Error, 'boom'
     end
 
-    expect { described_class.perform_now(conversation.id) }.to raise_error(OpenaiService::Error)
+    described_class.perform_now(conversation.id)
 
-    expect(conversation.reload.last_error).to eq('Completion failed. Please try again.')
+    expect(conversation.reload.last_error).to eq('Completion failed: boom')
     expect(conversation.messages.where(role: 'assistant')).to be_empty
     expect(ConversationChannel).to have_received(:broadcast_frame).at_least(:once)
   end

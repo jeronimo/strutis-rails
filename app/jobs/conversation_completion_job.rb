@@ -4,9 +4,13 @@ class ConversationCompletionJob < ApplicationJob
     return unless @conversation
 
     @finalized = false
+    @failure = nil
     @conversation.update_column(:last_error, nil)
     begin
       run_completion
+    rescue StandardError => e
+      @failure = e
+      Rails.logger.error { "[ConversationCompletionJob] #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
     ensure
       finish_failed_turn
     end
@@ -115,7 +119,7 @@ class ConversationCompletionJob < ApplicationJob
   def finish_failed_turn
     return if @finalized
     @message.destroy! if @message
-    @conversation.last_error = 'Completion failed. Please try again.'
+    @conversation.last_error = @failure ? "Completion failed: #{@failure.message}" : 'Completion failed. Please try again.'
     @conversation.update_column(:last_error, @conversation.last_error)
     broadcast_frame(show_progress: false)
   end
