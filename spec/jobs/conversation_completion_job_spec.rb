@@ -53,6 +53,32 @@ RSpec.describe ConversationCompletionJob, type: :job do
     expect(ConversationChannel).to have_received(:broadcast_frame).at_least(:once)
   end
 
+  it 'records per-turn latency_ms and inference_ms on intermediate assistant messages and the accumulated total on the final one' do
+    conversation.update!(context_tokens: 0)
+    conversation.messages.create!(role: 'user', content: 'new')
+    tool_call = { id: 'call_1', type: 'function', function: { name: 'search', arguments: '{"query":"x"}' } }
+    calls = 0
+    allow(OpenaiService).to receive(:completion) do |_messages, _model, _conversation_id, **_options, &block|
+      calls += 1
+      if calls == 1
+        { content: '', reasoning: 'thinking', tool_calls: [ tool_call ], latency_ms: 1200, inference_ms: 1100, prompt_tokens: 10, completion_tokens: 5, reasoning_tokens: 4 }
+      else
+        block&.call('done')
+        { content: 'done', tool_calls: [], latency_ms: 300, inference_ms: 200, prompt_tokens: 12, completion_tokens: 3, reasoning_tokens: 0 }
+      end
+    end
+    allow(OpenaiService).to receive(:execute_tool).and_return('{"result":"ok"}')
+
+    described_class.perform_now(conversation.id)
+
+    assistant_messages = conversation.messages.reload.where(role: 'assistant')
+    expect(assistant_messages.count).to eq(2)
+    expect(assistant_messages.first.inference_ms).to eq(1100)
+    expect(assistant_messages.first.latency_ms).to eq(1200)
+    expect(assistant_messages.last.inference_ms).to eq(1300)
+    expect(assistant_messages.last.latency_ms).to eq(1500)
+  end
+
   it 'keeps the last known context_tokens when usage is missing from the stream' do
     conversation.update!(context_tokens: 50)
     conversation.messages.create!(role: 'user', content: 'new')

@@ -52,9 +52,9 @@ class ConversationCompletionJob < ApplicationJob
 
   def record_tool_turn(result, tools)
     if @message
-      @message.update!(content: result[:content], tool_calls: result[:tool_calls])
+      @message.update!(content: result[:content], tool_calls: result[:tool_calls], latency_ms: result[:latency_ms], inference_ms: result[:inference_ms])
     else
-      @message = @conversation.messages.create!(role: 'assistant', content: result[:content], tool_calls: result[:tool_calls], model: @conversation.model)
+      @message = @conversation.messages.create!(role: 'assistant', content: result[:content], tool_calls: result[:tool_calls], latency_ms: result[:latency_ms], inference_ms: result[:inference_ms], model: @conversation.model)
     end
     broadcast_frame(show_progress: true)
     result[:tool_calls].each do |tool_call|

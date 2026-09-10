@@ -32,6 +32,6 @@
       - if message.content.present?
         .chat-bubble{ id: "message-content-#{message.id}" }
           = render_message_markdown(message.content)
-      - if message.role == 'assistant' && message.latency_ms
+      - if message.role == 'assistant' && message.latency_ms && message.content.present?
         .chat-meta.small.text-muted
           = message_breakdown(message)
