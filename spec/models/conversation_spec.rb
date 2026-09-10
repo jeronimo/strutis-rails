@@ -85,7 +85,7 @@ RSpec.describe Conversation, type: :model do
       entries = conversation.prompt_messages
       expect(entries.size).to eq(3)
       expect(entries[0]).to eq({ role: 'system', content: 'rules' })
-      expect(entries[1][:role]).to eq('system')
+      expect(entries[1][:role]).to eq('user')
       expect(entries[1][:content]).to include('summary')
       expect(entries[1][:content]).to include('lossy')
       expect(entries[2]).to eq({ role: 'user', content: 'new' })
