@@ -6,7 +6,6 @@ class Message < ApplicationRecord
   after_destroy :reset_conversation_tool_call_cache
 
   validates :role, presence: true
-  validates :content, presence: true, unless: -> { tool_calls.present? }
 
   def tool_name
     return 'unknown' unless tool_call_id
