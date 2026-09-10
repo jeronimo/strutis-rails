@@ -48,7 +48,7 @@ class Conversation < ApplicationRecord
     active = messages.where(compacted_at: nil).where.not(role: 'compaction').to_a
     entries = active.select { |message| message.role == 'system' }.map(&:to_prompt_entry)
     digest = compaction_digest if summary.present?
-    entries << { role: 'system', content: digest } if digest.present?
+    entries << { role: 'user', content: digest } if digest.present?
     entries.concat(active.reject { |message| message.role == 'system' }.map(&:to_prompt_entry))
     entries
   end

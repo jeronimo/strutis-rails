@@ -130,7 +130,10 @@ class OpenaiService
     buffer = +''
 
     http.request(request) do |response|
-      raise Error, "OpenAI API error: #{response.code} #{response.message}" unless response.is_a?(Net::HTTPSuccess)
+      unless response.is_a?(Net::HTTPSuccess)
+        Rails.logger.error "[OpenAI] Error response body: #{response.body}"
+        raise Error, "OpenAI API error: #{response.code} #{response.message}"
+      end
 
       response.read_body do |chunk|
         buffer << chunk
