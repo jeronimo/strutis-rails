@@ -38,7 +38,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
     expect(conversation.messages.reload.where(role: 'assistant').last&.content).to eq('hello')
   end
 
-  it 'persists the error message, drops the partial message, and broadcasts the error when completion fails' do
+  it 'persists the error message, keeps the partial message, and broadcasts the error when completion fails' do
     conversation.update!(context_tokens: 0)
     conversation.messages.create!(role: 'user', content: 'new')
     allow(OpenaiService).to receive(:completion) do |_messages, _model, _conversation_id, **_options, &block|
@@ -49,8 +49,31 @@ RSpec.describe ConversationCompletionJob, type: :job do
     described_class.perform_now(conversation.id)
 
     expect(conversation.reload.last_error).to eq('Completion failed: boom')
-    expect(conversation.messages.where(role: 'assistant')).to be_empty
+    expect(conversation.messages.where(role: 'assistant').last&.content).to eq('partial')
     expect(ConversationChannel).to have_received(:broadcast_frame).at_least(:once)
+  end
+
+  it 'records a tool result for unexecuted tool calls when the turn fails' do
+    conversation.update!(context_tokens: 0)
+    conversation.messages.create!(role: 'user', content: 'new')
+    tool_call = { id: 'call_1', type: 'function', function: { name: 'search', arguments: '{"query":"x"}' } }
+    calls = 0
+    allow(OpenaiService).to receive(:completion) do |_messages, _model, _conversation_id, **_options, &block|
+      calls += 1
+      if calls == 1
+        { content: '', reasoning: 'thinking', tool_calls: [ tool_call ], latency_ms: 1, inference_ms: 1, prompt_tokens: 10, completion_tokens: 5, reasoning_tokens: 0 }
+      else
+        raise OpenaiService::Error, 'boom'
+      end
+    end
+    allow(OpenaiService).to receive(:execute_tool).and_raise(OpenaiService::Error, 'boom')
+
+    described_class.perform_now(conversation.id)
+
+    expect(conversation.reload.last_error).to eq('Completion failed: boom')
+    tool_message = conversation.messages.where(role: 'tool').last
+    expect(tool_message.tool_call_id).to eq('call_1')
+    expect(tool_message.content).to eq('Tool not executed: boom')
   end
 
   it 'records per-turn latency_ms and inference_ms on intermediate assistant messages and the accumulated total on the final one' do

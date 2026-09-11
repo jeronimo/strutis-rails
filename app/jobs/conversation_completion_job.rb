@@ -21,6 +21,7 @@ class ConversationCompletionJob < ApplicationJob
       run_completion
     rescue StandardError => e
       @failure = e
+      Sentry.capture_exception(e)
       Rails.logger.error { "[ConversationCompletionJob] #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
     ensure
       finish_failed_turn
@@ -133,7 +134,7 @@ class ConversationCompletionJob < ApplicationJob
 
   def finish_failed_turn
     return if @finalized
-    @message.destroy! if @message && !@stopped
+    record_unexecuted_tools
     @conversation.last_error = if @stopped
       'Stopped by user.'
     elsif @failure
@@ -143,6 +144,19 @@ class ConversationCompletionJob < ApplicationJob
     end
     @conversation.update_column(:last_error, @conversation.last_error)
     broadcast_frame(show_progress: false)
+  end
+
+  def record_unexecuted_tools
+    return unless @message&.tool_calls.present?
+    executed = @conversation.messages.where(role: 'tool').where(tool_call_id: tool_call_ids).pluck(:tool_call_id)
+    tool_call_ids.each do |id|
+      next if executed.include?(id)
+      @conversation.messages.create!(role: 'tool', tool_call_id: id, content: "Tool not executed: #{@failure&.message}", model: @conversation.model)
+    end
+  end
+
+  def tool_call_ids
+    @message.tool_calls.map { |tool_call| tool_call[:id] || tool_call['id'] }
   end
 
   def format_duration(ms)

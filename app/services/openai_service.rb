@@ -72,7 +72,7 @@ class OpenaiService
     configure
     name = tool_call.dig(:function, :name)
     definition = tools.find { |tool| tool.dig(:function, :name) == name }
-    raise Error, "Unknown tool: #{name}" unless definition
+    return "Unknown tool: #{name}. Allowed tools: #{tools.map { |tool| tool.dig(:function, :name) }.join(', ')}." unless definition
 
     uri = URI(definition[:endpoint])
     http = Net::HTTP.new(uri.host, uri.port)
@@ -84,11 +84,19 @@ class OpenaiService
     request.body = JSON.parse(tool_call.dig(:function, :arguments).to_s).to_json
 
     response = http.request(request)
-    raise Error, "Tool error: #{response.code} - #{response.message}" unless response.is_a?(Net::HTTPSuccess)
+    return "Tool error (#{name}): #{response.code} - #{response.message}" unless response.is_a?(Net::HTTPSuccess)
 
     body = response.body.force_encoding(Encoding::UTF_8)
-    raise Error, 'Tool response is not valid UTF-8' unless body.valid_encoding?
+    return "Tool error (#{name}): response is not valid UTF-8" unless body.valid_encoding?
     body
+  rescue JSON::ParserError => e
+    "Tool error (#{name}): invalid arguments: #{e.message}"
+  rescue Net::OpenTimeout
+    "Tool error (#{name}): request timed out after #{@open_timeout}s"
+  rescue Net::ReadTimeout
+    "Tool error (#{name}): read timed out after #{@read_timeout}s"
+  rescue SocketError => e
+    "Tool error (#{name}): #{e.message}"
   end
 
   private
