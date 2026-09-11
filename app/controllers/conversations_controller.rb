@@ -44,6 +44,17 @@ class ConversationsController < ApplicationController
     render turbo_stream: turbo_stream.remove("conversation-progress-#{conversation.public_id}")
   end
 
+  def update
+    conversation = current_user.conversations.find_by!(public_id: params[:id])
+    conversation.update!(title: update_params[:title].to_s.strip)
+
+    streams = [ turbo_stream.replace("conversation-title-#{conversation.public_id}", conversation.title.presence || 'Untitled') ]
+    if request.referer.to_s.end_with?(conversation_path(conversation.public_id))
+      streams << turbo_stream.replace('conversation-drawer-title', conversation.title.presence || 'New Conversation')
+    end
+    render turbo_stream: streams
+  end
+
   def destroy
     conversation = current_user.conversations.find_by!(public_id: params[:id])
     conversation.destroy!
@@ -59,6 +70,10 @@ class ConversationsController < ApplicationController
 
   def create_params
     @create_params ||= params.permit(:model, :message, :conversation_public_id, :thinking, :reasoning_effort)
+  end
+
+  def update_params
+    params.permit(:title)
   end
 
   def apply_conversation_settings(conversation, model)

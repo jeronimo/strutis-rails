@@ -1,5 +1,15 @@
 - title = conversation.title.presence || 'Untitled'
-.list-group-item.d-flex.align-items-center.gap-2{ id: dom_id(conversation), class: active ? 'active' : nil }
-  = link_to conversation_path(conversation.public_id), title: title, class: [ 'flex-grow-1', 'text-truncate', 'text-decoration-none', active && 'text-white' ].compact do
-    %span{ id: "conversation-title-#{conversation.public_id}" }= title
-  = button_to '×', conversation_path(conversation.public_id), method: :delete, class: 'btn btn-sm conversation-destroy py-0 px-1', form: { class: 'd-inline', data: { turbo_confirm: 'Delete this conversation?' } }
+.list-group-item.d-flex.align-items-center.gap-2.pe-0{ id: dom_id(conversation), class: active ? 'active' : nil, data: { controller: 'conversation-menu' } }
+  = link_to conversation_path(conversation.public_id), title: title, class: [ 'flex-grow-1', 'text-truncate', 'text-decoration-none', active && 'text-white' ].compact, data: { conversation_menu_target: 'link' } do
+    %span{ id: "conversation-title-#{conversation.public_id}", data: { conversation_menu_target: 'title' } }= title
+  = form_with url: conversation_path(conversation.public_id), method: :patch, class: 'conversation-rename-form d-none flex-grow-1', data: { conversation_menu_target: 'form' } do
+    = text_field_tag :title, title, class: 'form-control form-control-sm', data: { conversation_menu_target: 'input', action: 'keydown->conversation-menu#handleKeydown blur->conversation-menu#handleBlur' }
+  .dropdown
+    %button.btn.btn-sm.conversation-menu-toggle{ type: 'button', 'aria-label': 'Conversation options', 'aria-expanded': 'false', data: { bs_toggle: 'dropdown', conversation_menu_target: 'toggle' } }
+      %svg{ xmlns: 'http://www.w3.org/2000/svg', width: 16, height: 16, fill: 'currentColor', viewBox: '0 0 16 16', 'aria-hidden': true }
+        %path{ d: 'M9.5 13a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0m0-5a1.5 1.5 0 1 1-3 0 1.5 1.5 0 0 1 3 0' }
+    %ul.dropdown-menu.dropdown-menu-end
+      %li
+        %button.dropdown-item{ type: 'button', data: { action: 'conversation-menu#rename', bs_dismiss: 'dropdown' } } Rename
+      %li
+        = button_to 'Delete', conversation_path(conversation.public_id), method: :delete, class: 'dropdown-item conversation-delete', form: { class: 'd-inline', data: { turbo_confirm: 'Delete this conversation?' } }

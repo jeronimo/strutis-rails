@@ -62,16 +62,11 @@
   --bs-btn-active-border-color: var(--bs-primary);
 }
 
-.conversation-destroy {
-  --bs-btn-color: var(--bs-secondary);
-  --bs-btn-bg: #fff;
-  --bs-btn-border-color: var(--bs-secondary);
-  --bs-btn-hover-color: var(--bs-danger);
-  --bs-btn-hover-bg: #fff;
-  --bs-btn-hover-border-color: var(--bs-danger);
-  --bs-btn-active-color: var(--bs-danger);
-  --bs-btn-active-bg: #fff;
-  --bs-btn-active-border-color: var(--bs-danger);
+.conversation-delete {
+  color: var(--bs-danger);
+  --bs-dropdown-link-hover-color: var(--bs-danger);
+  --bs-dropdown-link-active-color: var(--bs-danger);
+  --bs-dropdown-link-active-bg: var(--bs-tertiary-bg);
 }
 
 /* .grey { color: #6f707b; } */

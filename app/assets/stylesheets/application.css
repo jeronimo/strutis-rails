@@ -183,6 +183,22 @@
   height: 100%;
 }
 
+.conversation-menu-toggle {
+  visibility: hidden;
+  flex-shrink: 0;
+  border: 0;
+}
+
+.conversation-menu-toggle:hover,
+.conversation-menu-toggle.show {
+  background-color: rgba(var(--bs-primary-rgb), 0.1);
+}
+
+.list-group-item:hover .conversation-menu-toggle,
+.list-group-item:focus-within .conversation-menu-toggle {
+  visibility: visible;
+}
+
 .conversation-drawer-header {
   position: sticky;
   top: 0;

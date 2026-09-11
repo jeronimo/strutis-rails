@@ -27,7 +27,7 @@ Rails.application.routes.draw do
 
   get 'latency' => 'latencies#show'
 
-  resources :conversations, only: [ :new, :create, :show, :destroy ] do
+  resources :conversations, only: [ :new, :create, :show, :update, :destroy ] do
     post 'stop', on: :member
   end
 
