@@ -1,6 +1,6 @@
 - window = conversation.context_window
 - if window.to_i.positive?
-  .chat-context-usage.small.text-muted.font-monospace.d-flex.align-items-center.justify-content-between.gap-2.px-2.mb-2
+  .chat-context-usage.small.text-muted.font-monospace.d-flex.align-items-center.justify-content-between.gap-2.px-2.mb-2{ data: { context_tokens: conversation.context_tokens } }
     %span= format('%s / %s tokens', number_with_delimiter(conversation.context_tokens), number_with_delimiter(window))
     %span= format('%d%%', conversation.context_usage_percent)
   - if conversation.compaction_needed?

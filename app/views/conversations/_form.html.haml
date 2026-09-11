@@ -10,18 +10,26 @@
     = form_with url: conversations_path, method: :post, html: { id: 'conversation-form', class: 'flex-shrink-0' },
       data: { conversation_target: 'form', action: 'turbo:submit-start->conversation#disableForm turbo:submit-end->conversation#handleSubmitEnd' } do
       = render 'conversations/conversation_hidden_fields', conversation: conversation
+      .alert.alert-warning.d-none.mb-2{ data: { conversation_target: 'contextWarning' } }
+        .d-flex.align-items-center.justify-content-between.gap-2
+          %span.context-warning-message Context exceeds the selected model's limit.
+          = button_tag type: 'button', class: 'btn btn-sm btn-outline-primary', data: { action: 'conversation#compact' } do
+            Compact
       .chat-input-card
         = text_area_tag :message, '', rows: 1, placeholder: 'Enter your message...',
           class: 'conversation-textarea', id: 'conversation-textarea', required: true,
           'data-conversation-target': 'textarea', 'data-action': 'keydown->conversation#handleKeyDown'
         .d-flex.align-items-center.gap-2.mt-2
-          = select_tag :model, options_for_select(models, current_model), class: 'form-select flex-grow-1', required: true
-          - if reasoning_effort_options.present?
-            .form-check.form-switch.form-check-reverse.mb-0
-              = check_box_tag :thinking, '1', current_thinking, id: 'thinking-toggle', class: 'form-check-input'
-              %label.form-check-label{ for: 'thinking-toggle' } Thinking
-            = select_tag :reasoning_effort, options_for_select(reasoning_effort_options.map { |effort| [ effort, effort ] }, current_reasoning_effort),
-              class: 'form-select w-auto', 'aria-label': 'Reasoning effort'
+          = select_tag :model, options_for_select(models, current_model), class: 'form-select flex-grow-1', required: true,
+            data: { conversation_target: 'modelSelect', conversation_models: model_metadata.to_json,
+              conversation_context_tokens: (conversation&.context_tokens || 0), conversation_compact_threshold: Conversation::COMPACT_THRESHOLD,
+              action: 'change->conversation#modelChanged' }
+          .form-check.form-switch.form-check-reverse.mb-0{ class: thinking_visible ? nil : 'd-none', data: { conversation_target: 'thinking' } }
+            = check_box_tag :thinking, '1', current_thinking, id: 'thinking-toggle', class: 'form-check-input'
+            %label.form-check-label{ for: 'thinking-toggle' } Thinking
+          = select_tag :reasoning_effort, options_for_select(reasoning_effort_options.map { |effort| [ effort, effort ] }, current_reasoning_effort),
+            class: reasoning_visible ? 'form-select w-auto' : 'form-select w-auto d-none', 'aria-label': 'Reasoning effort',
+            data: { conversation_target: 'reasoningEffort' }
           = button_tag type: 'submit', class: 'btn btn-primary chat-send-btn', 'data-conversation-target': 'submit', 'aria-label': 'Send message' do
             %svg{ xmlns: 'http://www.w3.org/2000/svg', width: 16, height: 16, fill: 'currentColor', viewBox: '0 0 16 16', 'aria-hidden': true }
               %path{ d: 'M8 1l7 7h-4v7H5V8H1l7-7z' }

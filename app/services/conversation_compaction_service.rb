@@ -1,4 +1,7 @@
 class ConversationCompactionService
+  CHARS_PER_TOKEN = 4
+  TEMPLATE_TOKENS_PER_MESSAGE = 8
+
   def self.perform(conversation)
     new(conversation).perform
   end
@@ -25,10 +28,18 @@ class ConversationCompactionService
       @conversation.update!(summary: summary)
       @conversation.messages.create!(role: 'compaction', content: summary, compacted_at: compacted_at, latency_ms: duration_ms, inference_ms: duration_ms, model: @conversation.model)
     end
+    record_context_tokens
     true
   end
 
   private
+
+  def record_context_tokens
+    entries = @conversation.prompt_messages
+    content_chars = entries.sum { |entry| entry[:content].to_s.length }
+    tokens = (content_chars / CHARS_PER_TOKEN.to_f).ceil + entries.size * TEMPLATE_TOKENS_PER_MESSAGE
+    @conversation.update_column(:context_tokens, tokens)
+  end
 
   def generate_summary(messages)
     previous = @conversation.summary

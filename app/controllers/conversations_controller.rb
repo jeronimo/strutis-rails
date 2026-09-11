@@ -3,22 +3,13 @@ class ConversationsController < ApplicationController
   before_action :authenticate_user!
 
   def new
-    @models = available_models
     @conversation = nil
-    @current_model = @models.first
-    kwargs = OpenaiService.chat_template_kwargs(@current_model)
-    @current_thinking = kwargs&.dig(:enable_thinking) || false
-    @current_reasoning_effort = kwargs&.dig(:reasoning_effort)
-    @reasoning_effort_options = kwargs&.dig(:reasoning_effort_options) || []
+    setup_conversation_model
   end
 
   def show
     @conversation = current_user.conversations.find_by!(public_id: params[:id])
-    @models = available_models
-    @current_model = @models.include?(@conversation.model) ? @conversation.model : @models.first
-    @current_thinking = @conversation.thinking
-    @current_reasoning_effort = @conversation.reasoning_effort || default_reasoning_effort
-    @reasoning_effort_options = reasoning_effort_options
+    setup_conversation_model
   end
 
   def create
@@ -80,14 +71,6 @@ class ConversationsController < ApplicationController
     options.include?(effort) ? effort : nil
   end
 
-  def reasoning_effort_options
-    OpenaiService.chat_template_kwargs(@current_model)&.dig(:reasoning_effort_options) || []
-  end
-
-  def default_reasoning_effort
-    OpenaiService.chat_template_kwargs(@current_model)&.dig(:reasoning_effort)
-  end
-
   def handle_compact(model, public_id)
     conversation = current_user.conversations.find_by(public_id: public_id)
     unless conversation&.compactable?
@@ -120,6 +103,36 @@ class ConversationsController < ApplicationController
 
   def available_models
     OpenaiService.models.map { |model| model[:id] }
+  end
+
+  def model_metadata
+    OpenaiService.models.each_with_object({}) do |model, metadata|
+      kwargs = model[:chat_template_kwargs] || {}
+      metadata[model[:id]] = {
+        context_length: model[:context_length],
+        supports_thinking: kwargs.key?(:enable_thinking),
+        default_thinking: kwargs[:enable_thinking] || false,
+        reasoning_effort_options: Array(kwargs[:reasoning_effort_options]),
+        default_reasoning_effort: kwargs[:reasoning_effort]
+      }
+    end
+  end
+
+  def setup_conversation_model
+    @models = available_models
+    @model_metadata = model_metadata
+    @current_model = current_model
+    meta = @model_metadata[@current_model]
+    @current_thinking = @conversation ? @conversation.thinking : meta&.fetch(:default_thinking, false)
+    @current_reasoning_effort = @conversation ? (@conversation.reasoning_effort || meta&.dig(:default_reasoning_effort)) : meta&.dig(:default_reasoning_effort)
+    @reasoning_effort_options = meta&.fetch(:reasoning_effort_options, []) || []
+    @thinking_visible = meta&.fetch(:supports_thinking, false)
+    @reasoning_visible = meta&.fetch(:reasoning_effort_options, []).present?
+  end
+
+  def current_model
+    return @models.first unless @conversation
+    @models.include?(@conversation.model) ? @conversation.model : @models.first
   end
 
   def render_conversation_created(conversation, user_message, new_conversation:)
