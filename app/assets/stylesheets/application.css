@@ -54,7 +54,10 @@
 
 .chat-bubble h1,
 .chat-bubble h2,
-.chat-bubble h3 {
+.chat-bubble h3,
+.chat-bubble h4,
+.chat-bubble h5,
+.chat-bubble h6 {
   font-size: 1rem;
   font-weight: 600;
   margin-top: 0.75rem;
