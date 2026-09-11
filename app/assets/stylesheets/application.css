@@ -101,6 +101,10 @@
   background-color: var(--bs-tertiary-bg);
 }
 
+.chat-message-queued {
+  opacity: 0.6;
+}
+
 .chat-meta {
   margin-top: 0.25rem;
 }

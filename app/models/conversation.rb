@@ -45,7 +45,7 @@ class Conversation < ApplicationRecord
   end
 
   def prompt_messages
-    active = messages.where(compacted_at: nil).where.not(role: 'compaction').to_a
+    active = messages.where(compacted_at: nil).where.not(role: 'compaction').where(queued: false).to_a
     entries = active.select { |message| message.role == 'system' }.map(&:to_prompt_entry)
     digest = compaction_digest if summary.present?
     entries << { role: 'user', content: digest } if digest.present?

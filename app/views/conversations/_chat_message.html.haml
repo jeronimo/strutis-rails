@@ -1,4 +1,6 @@
-.chat-message.mb-3{ id: "message-#{message.id}", class: message.role == 'user' ? 'chat-message-user' : nil }
+.chat-message.mb-3{ id: "message-#{message.id}", class: [ message.role == 'user' && 'chat-message-user', message.queued? && 'chat-message-queued' ].compact }
+  - if message.queued?
+    .small.text-muted.mb-1 Queued
   - if message.role == 'assistant' && message.reasoning.present?
     %details.chat-bubble.chat-tool{ id: "message-reasoning-#{message.id}" }
       %summary.small.text-muted

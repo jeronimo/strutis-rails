@@ -1,5 +1,6 @@
 class ConversationCompletionJob < ApplicationJob
   @@stop_flags = {}
+  @@active = {}
 
   def self.request_stop(conversation_id)
     @@stop_flags[conversation_id] = true
@@ -9,7 +10,12 @@ class ConversationCompletionJob < ApplicationJob
     @@stop_flags.delete(conversation_id)
   end
 
+  def self.active?(conversation_id)
+    @@active.key?(conversation_id)
+  end
+
   def perform(conversation_id)
+    @@active[conversation_id] = true
     @conversation = Conversation.find_by(id: conversation_id)
     return unless @conversation
 
@@ -26,10 +32,28 @@ class ConversationCompletionJob < ApplicationJob
     ensure
       finish_failed_turn
     end
-    ConversationTitleJob.perform_later(@conversation.id) if @finalized && @conversation.title_generation_needed?
+    if @finalized
+      drain_queued_messages
+      ConversationTitleJob.perform_later(@conversation.id) if @conversation.title_generation_needed?
+    end
+  ensure
+    @@active.delete(conversation_id)
   end
 
   private
+
+  def drain_queued_messages
+    queued = @conversation.messages.where(role: 'user', queued: true)
+    return unless queued.exists?
+
+    queued.find_each do |msg|
+      content, model = msg.content, msg.model
+      msg.destroy!
+      @conversation.messages.create!(role: 'user', content: content, model: model)
+    end
+    broadcast_frame(show_progress: true)
+    self.class.perform_later(@conversation.id)
+  end
 
   def run_completion
     tools = OpenaiService.tools

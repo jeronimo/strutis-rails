@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_09_073919) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_11_215947) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -66,6 +66,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_09_073919) do
     t.integer "latency_ms"
     t.string "model"
     t.integer "prompt_tokens"
+    t.boolean "queued", default: false, null: false
     t.text "reasoning"
     t.integer "reasoning_tokens"
     t.string "role", null: false

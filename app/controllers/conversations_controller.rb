@@ -32,10 +32,15 @@ class ConversationsController < ApplicationController
     end
 
     apply_conversation_settings(conversation, model)
-    user_message = conversation.messages.create!(role: 'user', content: message, model: model)
-    ConversationCompletionJob.perform_later(conversation.id)
 
-    render_conversation_created(conversation, user_message, new_conversation: public_id.blank?)
+    if ConversationCompletionJob.active?(conversation.id)
+      conversation.messages.create!(role: 'user', content: message, model: model, queued: true)
+      render turbo_stream: turbo_stream.replace("messages-#{conversation.public_id}", partial: 'conversations/messages_frame', locals: { conversation:, messages: conversation.messages, show_progress: true })
+    else
+      user_message = conversation.messages.create!(role: 'user', content: message, model: model)
+      ConversationCompletionJob.perform_later(conversation.id)
+      render_conversation_created(conversation, user_message, new_conversation: public_id.blank?)
+    end
   end
 
   def stop
