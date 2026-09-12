@@ -1,6 +1,7 @@
 class ConversationsController < ApplicationController
   layout 'user'
   before_action :authenticate_user!
+  before_action :load_conversations
 
   def new
     @conversation = nil

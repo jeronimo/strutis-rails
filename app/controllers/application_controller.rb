@@ -4,7 +4,6 @@ class ApplicationController < ActionController::Base
   respond_to :html, :turbo_stream
 
   before_action :configure_permitted_parameters, if: :devise_controller?
-  before_action :load_conversations, if: :user_signed_in?
 
   protected
 
