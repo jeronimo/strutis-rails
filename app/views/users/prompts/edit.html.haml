@@ -1,5 +1,5 @@
 .container
-  %h5 Your System Prompt
+  = render 'users/account_tabs', active_tab: 'prompt'
 
   = form_with url: users_prompt_path, scope: :prompt, method: :patch do |f|
     - if @prompt.errors.any?

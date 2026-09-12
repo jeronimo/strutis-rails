@@ -38,8 +38,7 @@
               - @conversations.each do |conversation|
                 = render 'conversations/conversation_link', conversation: conversation, active: @conversation&.public_id == conversation.public_id
             .list-group.mt-2{ data: { turbo: false } }
-              = link_to 'Profile', edit_users_profile_path, class: 'list-group-item list-group-item-action'
-              = link_to 'System Prompt', edit_users_prompt_path, class: 'list-group-item list-group-item-action'
+              = link_to current_user.full_name.presence || current_user.email, edit_users_profile_path, class: 'list-group-item list-group-item-action'
               = button_to 'Sign Out', destroy_user_session_path, method: :delete, class: 'btn btn-link p-0 w-100 text-start text-decoration-none', form: { class: 'list-group-item list-group-item-action' }
         .col-md-9.mt-3
           .conversation-drawer-header.d-md-none

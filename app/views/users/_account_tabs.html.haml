@@ -1,0 +1,5 @@
+%ul.nav.nav-tabs.mb-3
+  %li.nav-item
+    = link_to 'Profile', edit_users_profile_path, class: "nav-link#{' active' if active_tab == 'profile' }"
+  %li.nav-item
+    = link_to 'System prompt', edit_users_prompt_path, class: "nav-link#{' active' if active_tab == 'prompt' }"
