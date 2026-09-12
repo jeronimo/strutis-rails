@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
   static targets = ["label", "testBtn", "authFormContainer"]
-  static values = { interval: { type: Number, default: 500 } }
+  static values = { interval: { type: Number, default: 1000 } }
 
   connect() {
     this.getLabel = this.getLabel.bind(this)
