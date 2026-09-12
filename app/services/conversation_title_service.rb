@@ -18,8 +18,11 @@ class ConversationTitleService
   private
 
   def generate_title
-    prompt = [ { role: 'system', content: title_prompt } ]
-    prompt.concat(title_messages.map { |message| { role: message.role, content: message.content } })
+    conversation = title_messages.map { |message| "#{message.role}: #{message.content}" }.join("\n\n")
+    prompt = [
+      { role: 'system', content: title_prompt },
+      { role: 'user', content: conversation }
+    ]
     OpenaiService.completion(prompt, @conversation.model, @conversation.public_id)[:content].to_s.strip.presence
   end
 
