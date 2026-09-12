@@ -7,7 +7,8 @@ module Users
     def update
       @user = current_user
       if @user.update(profile_params)
-        redirect_to edit_users_profile_path, notice: 'Profile was successfully updated.'
+        flash[:user] = { notice: 'Profile was successfully updated.' }
+        redirect_to edit_users_profile_path
       else
         render :edit, status: :unprocessable_entity
       end

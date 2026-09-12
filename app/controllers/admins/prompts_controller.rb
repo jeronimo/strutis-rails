@@ -15,7 +15,8 @@ module Admins
     def create
       @prompt = Prompt.new(prompt_params.merge(user_id: nil))
       if @prompt.save
-        redirect_to admins_prompts_path, notice: 'Prompt was successfully created.'
+        flash[:admin] = { notice: 'Prompt was successfully created.' }
+        redirect_to admins_prompts_path
       else
         render :new, status: :unprocessable_entity
       end
@@ -28,7 +29,8 @@ module Admins
     def update
       @prompt = find_prompt
       if @prompt.update(prompt_params)
-        redirect_to admins_prompts_path, notice: 'Prompt was successfully updated.'
+        flash[:admin] = { notice: 'Prompt was successfully updated.' }
+        redirect_to admins_prompts_path
       else
         render :edit, status: :unprocessable_entity
       end
@@ -36,7 +38,8 @@ module Admins
 
     def destroy
       find_prompt.destroy
-      redirect_to admins_prompts_path, notice: 'Prompt was successfully deleted.'
+      flash[:admin] = { notice: 'Prompt was successfully deleted.' }
+      redirect_to admins_prompts_path
     end
 
     private

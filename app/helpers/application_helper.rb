@@ -21,4 +21,12 @@ module ApplicationHelper
     html = Commonmarker.to_html(content.to_s, plugins: { syntax_highlighter: nil })
     sanitize(html, tags: %w[p br strong em del a ul ol li code pre blockquote h1 h2 h3 h4 h5 h6 hr img table thead tbody tr th td])
   end
+
+  def render_flash(namespace)
+    return unless flash[namespace]
+
+    flash[namespace].map do |type, message|
+      content_tag(:div, message, class: "alert alert-#{type == 'notice' ? 'success' : 'danger'}")
+    end.join
+  end
 end

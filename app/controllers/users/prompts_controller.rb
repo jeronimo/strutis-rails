@@ -7,7 +7,8 @@ module Users
     def update
       @prompt = current_user.prompts.find_by(key: 'system') || current_user.prompts.build(key: 'system')
       if @prompt.update(prompt_params)
-        redirect_to edit_users_prompt_path, notice: 'System prompt was successfully updated.'
+        flash[:user] = { notice: 'System prompt was successfully updated.' }
+        redirect_to edit_users_prompt_path
       else
         render :edit, status: :unprocessable_entity
       end

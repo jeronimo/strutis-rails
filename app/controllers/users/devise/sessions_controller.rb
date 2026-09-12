@@ -6,12 +6,12 @@ module Users
           self.resource = resource_class.find_by(authentication_token: params[:user][:authentication_token])
           return fail_authentication unless resource && resource.valid_for_authentication?
 
-          set_flash_message!(:notice, :signed_in)
+          flash[:user] = { notice: t('devise.sessions.signed_in') }
           sign_in(resource_name, resource)
           yield resource if block_given?
         else
           self.resource = warden.authenticate!(auth_options)
-          set_flash_message!(:notice, :signed_in)
+          flash[:user] = { notice: t('devise.sessions.signed_in') }
           sign_in(resource_name, resource)
           yield resource if block_given?
         end
