@@ -84,18 +84,26 @@ class OpenaiService
     request.body = JSON.parse(tool_call.dig(:function, :arguments).to_s).to_json
 
     response = http.request(request)
-    return "Tool error (#{name}): #{response.code} - #{response.message}" unless response.is_a?(Net::HTTPSuccess)
+    unless response.is_a?(Net::HTTPSuccess)
+      body = response.body.to_s
+      return body if body.strip.present?
+      return "Tool error (#{name}): #{response.code} - #{response.message}"
+    end
 
     body = response.body.force_encoding(Encoding::UTF_8)
     return "Tool error (#{name}): response is not valid UTF-8" unless body.valid_encoding?
     truncate_tool_result(body, char_budget)
   rescue JSON::ParserError => e
+    Sentry.capture_exception(e)
     "Tool error (#{name}): invalid arguments: #{e.message}"
-  rescue Net::OpenTimeout
+  rescue Net::OpenTimeout => e
+    Sentry.capture_exception(e)
     "Tool error (#{name}): request timed out after #{@open_timeout}s"
-  rescue Net::ReadTimeout
+  rescue Net::ReadTimeout => e
+    Sentry.capture_exception(e)
     "Tool error (#{name}): read timed out after #{@read_timeout}s"
   rescue SocketError => e
+    Sentry.capture_exception(e)
     "Tool error (#{name}): #{e.message}"
   end
 
