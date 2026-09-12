@@ -6,6 +6,10 @@ class ConversationCompactionJob < ApplicationJob
     compacted = false
     begin
       compacted = ConversationCompactionService.perform(@conversation)
+    rescue StandardError => e
+      Sentry.capture_exception(e)
+      Rails.logger.error { "[ConversationCompactionJob] #{e.class}: #{e.message}" }
+      raise
     ensure
       if compacted
         ConversationChannel.broadcast_frame(@conversation, show_progress: false)

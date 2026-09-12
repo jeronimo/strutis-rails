@@ -29,6 +29,16 @@ class Message < ApplicationRecord
     nil
   end
 
+  def truncated?
+    return false unless role == 'tool'
+    parsed = JSON.parse(content)
+    parsed.is_a?(Hash) && parsed['truncated'] == true
+  rescue JSON::ParserError => e
+    Rails.logger.error { "[Message] Malformed tool JSON in message #{id}: #{e.message}" }
+    Sentry.capture_exception(e)
+    false
+  end
+
   def to_prompt_entry
     entry = { role: role, content: content }
     entry[:tool_calls] = tool_calls if tool_calls.present?

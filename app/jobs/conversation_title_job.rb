@@ -8,5 +8,9 @@ class ConversationTitleJob < ApplicationJob
     return if title.blank?
 
     ConversationChannel.broadcast_title(@conversation)
+  rescue StandardError => e
+    Sentry.capture_exception(e)
+    Rails.logger.error { "[ConversationTitleJob] #{e.class}: #{e.message}" }
+    raise
   end
 end

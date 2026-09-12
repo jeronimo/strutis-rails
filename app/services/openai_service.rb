@@ -68,7 +68,7 @@ class OpenaiService
       reasoning_tokens: usage.dig(:completion_tokens_details, :reasoning_tokens) }
   end
 
-  def self.execute_tool(tool_call, tools)
+  def self.execute_tool(tool_call, tools, char_budget: nil)
     configure
     name = tool_call.dig(:function, :name)
     definition = tools.find { |tool| tool.dig(:function, :name) == name }
@@ -88,7 +88,7 @@ class OpenaiService
 
     body = response.body.force_encoding(Encoding::UTF_8)
     return "Tool error (#{name}): response is not valid UTF-8" unless body.valid_encoding?
-    body
+    truncate_tool_result(body, char_budget)
   rescue JSON::ParserError => e
     "Tool error (#{name}): invalid arguments: #{e.message}"
   rescue Net::OpenTimeout
@@ -100,6 +100,41 @@ class OpenaiService
   end
 
   private
+
+  def self.truncate_tool_result(body, budget)
+    return body if budget.nil? || body.length <= budget
+
+    parsed = JSON.parse(body)
+    if parsed.is_a?(Hash)
+      largest_key, largest_value = parsed.max_by { |_, value| value.is_a?(String) ? value.length : 0 }
+      if largest_value.is_a?(String) && largest_value.length * 2 >= body.length
+        field_budget = budget - (body.length - largest_value.length)
+        if field_budget.positive?
+          parsed[largest_key] = "#{largest_value[0...field_budget]}\n[truncated: first #{field_budget} of #{largest_value.length} chars]"
+          parsed['truncated'] = true
+          return parsed.to_json
+        end
+      end
+    end
+    "#{body[0...budget]}\n[truncated: first #{budget} of #{body.length} chars]"
+  rescue JSON::ParserError => e
+    Sentry.capture_exception(e)
+    "#{body[0...budget]}\n[truncated: first #{budget} of #{body.length} chars]"
+  end
+
+  def self.error_detail(response)
+    body = response.body.to_s
+    parsed = JSON.parse(body)
+    if parsed.is_a?(Hash)
+      error = parsed['error']
+      detail = error.is_a?(Hash) ? error['message'] : error
+      return detail if detail.is_a?(String) && detail.present?
+    end
+    body
+  rescue JSON::ParserError => e
+    Sentry.capture_exception(e)
+    body
+  end
 
   def self.accumulate_tool_calls(tool_calls, delta_tool_calls)
     return unless delta_tool_calls
@@ -123,7 +158,9 @@ class OpenaiService
     response = http.request(request)
 
     log_response(response)
-    raise Error, "OpenAI API error: #{response.code} - #{response.message}" unless response.is_a?(Net::HTTPSuccess)
+    unless response.is_a?(Net::HTTPSuccess)
+      raise Error, "OpenAI API error: #{response.code} #{response.message}: #{error_detail(response)}"
+    end
 
     JSON.parse(response.body, symbolize_names: true)
   end
@@ -140,7 +177,7 @@ class OpenaiService
     http.request(request) do |response|
       unless response.is_a?(Net::HTTPSuccess)
         Rails.logger.error "[OpenAI] Error response body: #{response.body}"
-        raise Error, "OpenAI API error: #{response.code} #{response.message}"
+        raise Error, "OpenAI API error: #{response.code} #{response.message}: #{error_detail(response)}"
       end
 
       response.read_body do |chunk|

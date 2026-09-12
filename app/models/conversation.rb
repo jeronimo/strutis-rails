@@ -25,6 +25,23 @@ class Conversation < ApplicationRecord
     window.to_i.positive? && context_tokens.to_f / window > COMPACT_THRESHOLD
   end
 
+  def prompt_over_budget?
+    window = context_window
+    window.to_i.positive? && prompt_token_estimate / window.to_f > COMPACT_THRESHOLD
+  end
+
+  def prompt_token_estimate
+    entries = prompt_messages
+    content_chars = entries.sum { |entry| entry[:content].to_s.length }
+    (content_chars / ConversationCompactionService::CHARS_PER_TOKEN.to_f).ceil + entries.size * ConversationCompactionService::TEMPLATE_TOKENS_PER_MESSAGE
+  end
+
+  def tool_result_char_budget
+    window = context_window
+    return nil unless window.to_i.positive?
+    (window * (1 - COMPACT_THRESHOLD) * ConversationCompactionService::CHARS_PER_TOKEN).to_i
+  end
+
   def compactable?
     last_user_message = messages.where(compacted_at: nil).where(role: 'user').order(:id).last
     return false unless last_user_message

@@ -63,7 +63,7 @@ class ConversationCompletionJob < ApplicationJob
         @stopped = true
         break
       end
-      compact_conversation if @conversation.compaction_needed?
+      compact_conversation if @conversation.compaction_needed? || @conversation.prompt_over_budget?
       result = stream_turn(tools)
       accumulate_metrics(metrics, result)
       record_context_tokens(result)
@@ -103,7 +103,7 @@ class ConversationCompletionJob < ApplicationJob
     broadcast_frame(show_progress: true)
     result[:tool_calls].each do |tool_call|
       start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      tool_result = OpenaiService.execute_tool(tool_call, tools)
+      tool_result = OpenaiService.execute_tool(tool_call, tools, char_budget: @conversation.tool_result_char_budget)
       tool_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
       @conversation.messages.create!(role: 'tool', tool_call_id: tool_call[:id], content: tool_result, latency_ms: tool_ms, inference_ms: tool_ms, model: @conversation.model)
     end
