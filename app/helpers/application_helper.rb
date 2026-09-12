@@ -27,6 +27,6 @@ module ApplicationHelper
 
     flash[namespace].map do |type, message|
       content_tag(:div, message, class: "alert alert-#{type == 'notice' ? 'success' : 'danger'}")
-    end.join
+    end.safe_join
   end
 end
