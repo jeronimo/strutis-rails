@@ -10,7 +10,7 @@
       %pre.small.mb-0
         = message.reasoning
   - if message.content.present?
-    .chat-bubble{ id: "message-content-#{message.id}" }
+    .chat-bubble{ id: "message-content-#{message.id}", data: { final: message.latency_ms.present? } }
       = render_message_markdown(message.content)
   - if message.role == 'assistant' && message.latency_ms && message.content.present?
     .chat-meta.small.text-muted

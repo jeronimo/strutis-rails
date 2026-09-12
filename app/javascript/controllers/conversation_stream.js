@@ -36,6 +36,13 @@ export function unsubscribeConversation() {
 }
 
 function applyStream(data) {
+  if (typeof data === 'string') {
+    const stream = new DOMParser().parseFromString(data, 'text/html').querySelector('turbo-stream')
+    if (stream && stream.getAttribute('action') === 'append') {
+      const target = document.getElementById(stream.getAttribute('target'))
+      if (target && target.dataset.final === 'true') return
+    }
+  }
   Turbo.renderStreamMessage(data)
 }
 
