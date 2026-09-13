@@ -1,6 +1,6 @@
 class ConversationsController < ApplicationController
   layout 'user'
-  before_action :authenticate_user!
+  before_action :authenticate_user!, except: :show
   before_action :load_conversations
 
   def new
@@ -9,7 +9,8 @@ class ConversationsController < ApplicationController
   end
 
   def show
-    @conversation = current_user.conversations.find_by!(public_id: params[:id])
+    @conversation = Conversation.find_by!(public_id: params[:id])
+    @shared = current_user&.id != @conversation.user_id
     setup_conversation_model
   end
 

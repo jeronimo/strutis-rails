@@ -175,6 +175,14 @@
   height: calc(100vh - 3rem);
 }
 
+.chat-conversation.shared .chat-window {
+  height: auto;
+}
+
+.chat-conversation.shared .chat-scroll {
+  overflow: visible;
+}
+
 .new-conversation-layout {
   height: calc(100vh - 3rem);
 }

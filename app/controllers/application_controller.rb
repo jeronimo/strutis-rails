@@ -16,6 +16,6 @@ class ApplicationController < ActionController::Base
   private
 
   def load_conversations
-    @conversations = current_user.conversations.order(created_at: :desc)
+    @conversations = current_user ? current_user.conversations.order(created_at: :desc) : []
   end
 end

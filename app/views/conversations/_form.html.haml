@@ -1,4 +1,4 @@
-.chat-conversation.flex-fill.min-h-0{ data: { controller: 'conversation', conversation_public_id: conversation&.public_id } }
+.chat-conversation.flex-fill.min-h-0{ class: shared ? 'shared' : nil, data: { controller: 'conversation', conversation_public_id: conversation&.public_id } }
   .container.chat-window.d-flex.flex-column
     .chat-scroll.flex-fill.overflow-y-auto.min-h-0{ data: { conversation_target: 'scroll' } }
       .pe-2#conversation-messages
@@ -7,7 +7,7 @@
         - else
           = turbo_frame_tag 'messages', data: { conversation_target: 'messages' }
     .flex-shrink-0#conversation-error
-    = form_with url: conversations_path, method: :post, html: { id: 'conversation-form', class: 'flex-shrink-0' },
+    = form_with url: conversations_path, method: :post, html: { id: 'conversation-form', class: shared ? 'flex-shrink-0 d-none' : 'flex-shrink-0' },
       data: { conversation_target: 'form', action: 'turbo:submit-start->conversation#disableForm turbo:submit-end->conversation#handleSubmitEnd' } do
       = render 'conversations/conversation_hidden_fields', conversation: conversation
       .alert.alert-warning.d-none.mb-2{ data: { conversation_target: 'contextWarning' } }
