@@ -202,6 +202,13 @@ class OpenaiService
       end
     end
 
+    unless buffer.strip.empty?
+      parse_sse_event(buffer, usage) do |delta|
+        first_content ||= Process.clock_gettime(Process::CLOCK_MONOTONIC) if delta[:content].present?
+        yield delta
+      end
+    end
+
     finish = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     first_content ||= finish
     timing[:latency_ms] = ms(finish - start)
