@@ -27,8 +27,8 @@ module ApplicationHelper
   def render_flash(namespace)
     return unless flash[namespace]
 
-    flash[namespace].map do |type, message|
+    safe_join(flash[namespace].map do |type, message|
       content_tag(:div, message, class: "alert alert-#{type == 'notice' ? 'success' : 'danger'}")
-    end.safe_join
+    end)
   end
 end
