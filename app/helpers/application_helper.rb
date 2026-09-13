@@ -19,7 +19,9 @@ module ApplicationHelper
 
   def render_message_markdown(content)
     html = Commonmarker.to_html(content.to_s, plugins: { syntax_highlighter: nil })
-    sanitize(html, tags: %w[p br strong em del a ul ol li code pre blockquote h1 h2 h3 h4 h5 h6 hr img table thead tbody tr th td])
+    html = html.gsub(%r{<a\b}, '<a target="_blank" rel="noopener"')
+    attributes = Rails::HTML::Concern::Scrubber::SafeList::DEFAULT_ALLOWED_ATTRIBUTES.to_a + %w[target rel]
+    sanitize(html, tags: %w[p br strong em del a ul ol li code pre blockquote h1 h2 h3 h4 h5 h6 hr img table thead tbody tr th td], attributes: attributes)
   end
 
   def render_flash(namespace)
