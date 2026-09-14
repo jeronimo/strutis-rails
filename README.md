@@ -46,6 +46,13 @@ bin/kamal logs       # tail app logs
 bin/kamal dbc        # rails dbconsole
 ```
 
+Other useful commands:
+
+```
+kamal app exec -i 'bin/rails c'           # Rails console (alternative)
+kamal app logs -f --roles=web              # Tail web logs
+```
+
 Accessory (Postgres) management:
 
 ```
