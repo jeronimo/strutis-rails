@@ -4,10 +4,10 @@ module Users
       include Users::TwoFactorStep
 
       def create
-        self.resource = warden.authenticate(auth_options)
-        return fail_authentication unless resource
+        user = User.find_by(email: params.dig(:user, :email))
+        return fail_authentication unless user&.valid_for_authentication? && user.valid_password?(params[:user][:password])
 
-        begin_two_factor(resource)
+        begin_two_factor(user)
       end
 
       def email
