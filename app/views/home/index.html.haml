@@ -1,4 +1,5 @@
 .text-center.my-5{ 'data-controller' => 'latency' }
+  = render_flash :user
   = image_tag 'logo.webp', alt: 'Strutis', class: 'logo-half mt-5'
   #latency-data{ 'data-latency-target' => 'label' } Loading...
 

@@ -1,5 +1,5 @@
 %h2.text-center.mb-4 Forgot your password?
-= form_for(resource, as: resource_name, url: user_password_path) do |f|
+= form_for(resource, as: resource_name, url: user_password_path, data: { turbo: false }) do |f|
   = render 'users/devise/shared/error_messages', resource: resource
 
   .mb-3
