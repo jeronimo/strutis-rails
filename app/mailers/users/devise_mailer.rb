@@ -1,6 +1,11 @@
 module Users
-  class DeviseMailer < Devise::Mailer
-    layout false
+  class DeviseMailer < ::Devise::Mailer
+    layout 'mailer'
+
+    def mail(headers = {}, &)
+      attachments.inline['logo.webp'] = Rails.root.join('app/assets/images/logo.webp').read
+      super
+    end
 
     def reset_password_instructions(record, token, opts = {})
       @token = token
