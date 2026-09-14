@@ -10,7 +10,7 @@ module Users
         flash[:user] = { notice: 'System prompt was successfully updated.' }
         redirect_to edit_users_prompt_path
       else
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 

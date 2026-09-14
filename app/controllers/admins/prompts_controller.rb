@@ -18,7 +18,7 @@ module Admins
         flash[:admin] = { notice: 'Prompt was successfully created.' }
         redirect_to admins_prompts_path
       else
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 
@@ -32,7 +32,7 @@ module Admins
         flash[:admin] = { notice: 'Prompt was successfully updated.' }
         redirect_to admins_prompts_path
       else
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 

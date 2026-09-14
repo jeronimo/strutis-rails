@@ -21,7 +21,7 @@ module Admins
         flash[:admin] = { notice: 'User was successfully created.' }
         redirect_to admins_users_path
       else
-        render :new, status: :unprocessable_entity
+        render :new, status: :unprocessable_content
       end
     end
 
@@ -33,7 +33,7 @@ module Admins
         flash[:admin] = { notice: 'User was successfully updated.' }
         redirect_to admins_users_path
       else
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 

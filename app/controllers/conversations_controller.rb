@@ -20,7 +20,7 @@ class ConversationsController < ApplicationController
     public_id = create_params[:conversation_public_id].presence
 
     if model.blank? || message.blank?
-      render_conversation_error('Model and message are required.', :unprocessable_entity)
+      render_conversation_error('Model and message are required.', :unprocessable_content)
       return
     end
 
@@ -96,7 +96,7 @@ class ConversationsController < ApplicationController
   def handle_compact(model, public_id)
     conversation = current_user.conversations.find_by(public_id: public_id)
     unless conversation&.compactable?
-      render_conversation_error('Nothing to compact yet.', :unprocessable_entity)
+      render_conversation_error('Nothing to compact yet.', :unprocessable_content)
       return
     end
 

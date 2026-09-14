@@ -10,7 +10,7 @@ module Users
         flash[:user] = { notice: 'Profile was successfully updated.' }
         redirect_to edit_users_profile_path
       else
-        render :edit, status: :unprocessable_entity
+        render :edit, status: :unprocessable_content
       end
     end
 

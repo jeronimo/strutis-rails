@@ -23,7 +23,7 @@ module Users
       def fail_authentication
         self.resource = resource_class.new
         flash.now[:user] = { alert: t('sign_in.invalid_credentials') }
-        render :email, status: :unprocessable_entity
+        render :email, status: :unprocessable_content
       end
     end
   end
