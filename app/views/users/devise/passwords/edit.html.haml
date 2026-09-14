@@ -1,4 +1,4 @@
-%h2.mb-4 Change your password
+%h2.text-center.mb-4 Change your password
 = form_for(resource, as: resource_name, url: user_password_path, method: :put) do |f|
   = render 'users/devise/shared/error_messages', resource: resource
   = f.hidden_field :reset_password_token
@@ -15,3 +15,5 @@
 
   .d-grid
     = f.submit 'Change my password', class: 'btn btn-primary'
+
+= render 'users/devise/shared/links'

@@ -1,0 +1,7 @@
+.mt-3.text-center
+  - unless controller_name == 'sessions'
+    = link_to 'Sign in', user_email_sign_in_path, class: 'link-secondary d-block'
+  - if devise_mapping.recoverable? && controller_name != 'passwords'
+    = link_to 'Forgot your password?', new_user_password_path, class: 'link-secondary d-block'
+  - if devise_mapping.lockable? && controller_name != 'unlocks'
+    = link_to "Didn't receive unlock instructions?", new_user_unlock_path, class: 'link-secondary d-block'

@@ -1,5 +1,5 @@
-%h2.text-center.mb-4 Forgot your password?
-= form_for(resource, as: resource_name, url: user_password_path) do |f|
+%h2.text-center.mb-4 Unlock your account
+= form_for(resource, as: resource_name, url: user_unlock_path, html: { method: :post }) do |f|
   = render 'users/devise/shared/error_messages', resource: resource
 
   .mb-3
@@ -7,6 +7,6 @@
     = f.email_field :email, autofocus: true, autocomplete: 'email', class: 'form-control'
 
   .d-grid
-    = f.submit 'Send me password reset instructions', class: 'btn btn-primary'
+    = f.submit 'Resend unlock instructions', class: 'btn btn-primary'
 
 = render 'users/devise/shared/links'

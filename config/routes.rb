@@ -1,6 +1,7 @@
 Rails.application.routes.draw do
   devise_for :users, path_names: { sign_in: 'sign-in' }, case_insensitive_keys: [ :email ], strip_whitespace_keys: [ :email ],
-    controllers: { sessions: 'users/devise/sessions' }
+    skip: %i[registrations],
+    controllers: { sessions: 'users/devise/sessions', passwords: 'users/devise/passwords', unlocks: 'users/devise/unlocks' }
 
   get 'users/sign-in/verify', to: 'users/two_factors#new', as: :user_sign_in_verify
   post 'users/sign-in/verify', to: 'users/two_factors#create'
