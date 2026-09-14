@@ -65,8 +65,7 @@ Rails.application.configure do
     user_name: Rails.application.credentials.dig(:aws_ses, :user_name),
     password: Rails.application.credentials.dig(:aws_ses, :password),
     address: Rails.application.credentials.dig(:aws_ses, :address),
-    port: 587,
-    authentication: :plain
+    port: 587, enable_starttls: true, authentication: :login
   }
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
