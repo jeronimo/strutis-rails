@@ -5,9 +5,10 @@ RSpec.describe 'Conversations', type: :request do
 
   before do
     allow(OpenaiService).to receive(:models).and_return([ { id: 'test-model', context_length: 1000 } ])
-    get '/users/sign_in'
-    post '/users/sign_in', params: { user: { email: user.email, password: 'password123' } }
+    sign_in_user(user)
   end
+
+  after { sign_out_user }
 
   describe 'POST /conversations' do
     it 'creates the conversation with a system message from the global default' do

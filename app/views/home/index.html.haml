@@ -8,3 +8,4 @@
 
       = turbo_frame_tag 'auth_form', class: 'd-none', data: { latency_target: 'authFormContainer' } do
         = render 'users/devise/sessions/token_form'
+        = link_to 'Sign in with email', user_email_sign_in_path, class: 'd-block text-center mt-2', data: { turbo: false }

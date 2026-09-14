@@ -1,0 +1,21 @@
+!!!
+%html
+  %head
+    %title Strutis
+    %meta{ name: 'viewport', content: 'width=device-width,initial-scale=1' }
+    = csrf_meta_tags
+    = csp_meta_tag
+
+    = favicon_link_tag 'favicon-64x64.png'
+
+    = stylesheet_link_tag 'bootstrap/bootstrap', 'data-turbo-track': 'reload'
+    = stylesheet_link_tag 'bootstrap/custom'
+    = stylesheet_link_tag 'application', 'data-turbo-track': 'reload'
+    = isolated_importmap_tags 'application'
+
+  %body.d-flex.align-items-start.mt-3
+    .container
+      .row.justify-content-center
+        .col-md-6.col-lg-4
+          = render_flash :user
+          = yield

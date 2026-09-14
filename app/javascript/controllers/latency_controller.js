@@ -36,11 +36,15 @@ export default class extends Controller {
     const showForm = this.authFormContainerTarget.classList.contains('d-none')
 
     if (showForm) {
-      this.authFormContainerTarget.classList.remove('d-none')
-      this.testBtnTarget.classList.add('d-none')
+      this.showAuthForm()
     } else {
       this.authFormContainerTarget.classList.add('d-none')
       this.testBtnTarget.classList.remove('d-none')
     }
+  }
+
+  showAuthForm() {
+    this.authFormContainerTarget.classList.remove('d-none')
+    this.testBtnTarget.classList.add('d-none')
   }
 }

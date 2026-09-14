@@ -4,9 +4,10 @@ RSpec.describe 'Users::Prompts', type: :request do
   let(:user) { User.create!(email: 'user@example.com', password: 'password123') }
 
   before do
-    get '/users/sign_in'
-    post '/users/sign_in', params: { user: { email: user.email, password: 'password123' } }
+    sign_in_user(user)
   end
+
+  after { sign_out_user }
 
   describe 'GET /users/prompt/edit' do
     it 'shows the global default without a user prompt' do

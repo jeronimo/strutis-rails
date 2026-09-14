@@ -29,3 +29,9 @@
 
 en:
   hello: "Hello world"
+  sign_in:
+    invalid_credentials: "Invalid email or password."
+  two_factor:
+    code_sent: "We sent a 6-digit code to %{email}. Enter it below to finish signing in."
+    invalid_code: "Invalid or expired code. Check the code and try again."
+    resend: "Resend code"

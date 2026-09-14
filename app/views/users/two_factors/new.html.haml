@@ -1,0 +1,13 @@
+%h2.text-center.mb-2 Verify it's you
+%p.text-center.text-muted.mb-4= t('two_factor.code_sent', email: @pending_user.email)
+
+= form_with url: user_sign_in_verify_path, method: :post, data: { turbo: false } do
+  .mb-3
+    = label_tag :code, 'Code', class: 'form-label'
+    = text_field_tag :code, nil, class: 'form-control text-center', placeholder: '000000', inputmode: 'numeric', pattern: '\d{6}', maxlength: 6, autofocus: true, required: true
+
+  .d-grid
+    = submit_tag 'Verify', class: 'btn btn-primary'
+
+.mt-3.text-center
+  = link_to t('two_factor.resend'), user_sign_in_verify_path(resend: true), method: :post, data: { turbo: false }, class: 'link-secondary'

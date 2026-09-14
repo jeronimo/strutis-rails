@@ -1,0 +1,13 @@
+%h2.mb-4 Forgot your password?
+= form_for(resource, as: resource_name, url: user_password_path) do |f|
+  = render 'users/devise/shared/error_messages', resource: resource
+
+  .mb-3
+    = f.label :email, class: 'form-label'
+    = f.email_field :email, autofocus: true, autocomplete: 'email', class: 'form-control'
+
+  .d-grid
+    = f.submit 'Send me password reset instructions', class: 'btn btn-primary'
+
+.mt-3.text-center
+  = link_to 'Back to sign in', new_user_session_path, class: 'link-secondary'

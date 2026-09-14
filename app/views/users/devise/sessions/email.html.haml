@@ -1,0 +1,4 @@
+%h2.text-center.mb-4 Sign in
+= render 'users/devise/sessions/email_form'
+.mt-3.text-center
+  = link_to 'Forgot your password?', new_user_password_path, class: 'link-secondary'

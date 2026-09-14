@@ -1,0 +1,17 @@
+%h2.mb-4 Change your password
+= form_for(resource, as: resource_name, url: user_password_path, method: :put) do |f|
+  = render 'users/devise/shared/error_messages', resource: resource
+  = f.hidden_field :reset_password_token
+
+  .mb-3
+    = f.label :password, 'New password', class: 'form-label'
+    - if @minimum_password_length
+      %span.form-text.text-muted #{@minimum_password_length} characters minimum
+    = f.password_field :password, autofocus: true, autocomplete: 'new-password', class: 'form-control'
+
+  .mb-3
+    = f.label :password_confirmation, 'Confirm new password', class: 'form-label'
+    = f.password_field :password_confirmation, autocomplete: 'new-password', class: 'form-control'
+
+  .d-grid
+    = f.submit 'Change my password', class: 'btn btn-primary'

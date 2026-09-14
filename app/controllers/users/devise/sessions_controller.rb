@@ -1,22 +1,17 @@
 module Users
   module Devise
     class SessionsController < ::Devise::SessionsController
+      include Users::TwoFactorStep
+
       def create
-        if params[resource_name].present? && params[resource_name][:authentication_token].present?
-          self.resource = resource_class.find_by(authentication_token: params[:user][:authentication_token])
-          return fail_authentication unless resource && resource.valid_for_authentication?
+        self.resource = warden.authenticate(auth_options)
+        return fail_authentication unless resource
 
-          flash[:user] = { notice: t('devise.sessions.signed_in') }
-          sign_in(resource_name, resource)
-          yield resource if block_given?
-        else
-          self.resource = warden.authenticate!(auth_options)
-          flash[:user] = { notice: t('devise.sessions.signed_in') }
-          sign_in(resource_name, resource)
-          yield resource if block_given?
-        end
+        begin_two_factor(resource)
+      end
 
-        redirect_to after_sign_in_path_for(resource), status: :see_other
+      def email
+        self.resource = resource_class.new
       end
 
       def new
@@ -25,14 +20,10 @@ module Users
 
       protected
 
-      def after_sign_in_path_for(_resource)
-        new_conversation_path
-      end
-
-      private
-
       def fail_authentication
-        redirect_to root_path
+        self.resource = resource_class.new
+        flash.now[:user] = { alert: t('sign_in.invalid_credentials') }
+        render :email, status: :unprocessable_entity
       end
     end
   end

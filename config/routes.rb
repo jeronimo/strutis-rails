@@ -1,6 +1,14 @@
 Rails.application.routes.draw do
-  devise_for :users, case_insensitive_keys: [ :email ], strip_whitespace_keys: [ :email ],
+  devise_for :users, path_names: { sign_in: 'sign-in' }, case_insensitive_keys: [ :email ], strip_whitespace_keys: [ :email ],
     controllers: { sessions: 'users/devise/sessions' }
+
+  get 'users/sign-in/verify', to: 'users/two_factors#new', as: :user_sign_in_verify
+  post 'users/sign-in/verify', to: 'users/two_factors#create'
+  post 'users/sign-in/token', to: 'users/token_sessions#create', as: :user_token_sign_in
+
+  devise_scope :user do
+    get 'users/sign-in/email', to: 'users/devise/sessions#email', as: :user_email_sign_in
+  end
   devise_for :admins, path: 'admin',
     controllers: {
       sessions: 'admins/devise/sessions',

@@ -1,0 +1,11 @@
+= form_for(resource, as: resource_name, url: user_session_path, data: { turbo: false }) do |f|
+  .mb-3
+    = f.label :email, class: 'form-label'
+    = f.email_field :email, autofocus: true, autocomplete: 'email', class: 'form-control'
+
+  .mb-3
+    = f.label :password, class: 'form-label'
+    = f.password_field :password, autocomplete: 'current-password', class: 'form-control'
+
+  .d-grid
+    = f.submit 'Sign In', class: 'btn btn-primary'
