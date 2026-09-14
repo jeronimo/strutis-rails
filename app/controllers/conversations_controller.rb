@@ -124,7 +124,7 @@ class ConversationsController < ApplicationController
   end
 
   def available_models
-    OpenaiService.models.map { |model| model[:id] }
+    OpenaiService.models.map { |model| [ model[:display_name].presence || model[:id], model[:id] ] }
   end
 
   def model_metadata
@@ -153,8 +153,9 @@ class ConversationsController < ApplicationController
   end
 
   def current_model
-    return @models.first unless @conversation
-    @models.include?(@conversation.model) ? @conversation.model : @models.first
+    ids = @models.map { |_, id| id }
+    return ids.first unless @conversation
+    ids.include?(@conversation.model) ? @conversation.model : ids.first
   end
 
   def render_conversation_created(conversation, user_message, new_conversation:)
