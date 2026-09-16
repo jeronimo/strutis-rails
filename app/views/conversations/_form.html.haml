@@ -15,7 +15,7 @@
           %span.context-warning-message Context exceeds the selected model's limit.
           = button_tag type: 'button', class: 'btn btn-sm btn-outline-primary', data: { action: 'conversation#compact' } do
             Compact
-      .chat-input-card
+      .chat-input-card.mb-2
         = text_area_tag :message, '', rows: 1, placeholder: 'Enter your message...',
           class: 'conversation-textarea', id: 'conversation-textarea', required: true,
           'data-conversation-target': 'textarea', 'data-action': 'keydown->conversation#handleKeyDown'
