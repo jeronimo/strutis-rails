@@ -102,4 +102,26 @@ RSpec.describe Conversation, type: :model do
       expect(conversation.tool_call_names).to eq({})
     end
   end
+
+  describe 'soft delete' do
+    it 'sets deleted_at, hides the conversation, and keeps its messages' do
+      message = conversation.messages.create!(role: 'user', content: 'hello')
+      conversation.destroy!
+
+      expect(Conversation.exists?(conversation.id)).to be false
+      expect(Conversation.with_deleted.find(conversation.id).deleted_at).to be_present
+      expect(Message.exists?(message.id)).to be true
+    end
+
+    it 'excludes deleted conversations from the user association' do
+      conversation.destroy
+      expect(user.conversations.reload).to be_empty
+    end
+
+    it 'restores the conversation' do
+      conversation.destroy
+      Conversation.with_deleted.find(conversation.id).restore
+      expect(Conversation.exists?(conversation.id)).to be true
+    end
+  end
 end

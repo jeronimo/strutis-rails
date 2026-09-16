@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_13_200830) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_16_155433) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -43,6 +43,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_13_200830) do
   create_table "conversations", force: :cascade do |t|
     t.integer "context_tokens", default: 0, null: false
     t.datetime "created_at", null: false
+    t.datetime "deleted_at"
     t.string "last_error"
     t.string "model", null: false
     t.string "public_id", null: false
@@ -52,6 +53,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_13_200830) do
     t.string "title", default: "", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.index ["deleted_at"], name: "index_conversations_on_deleted_at"
     t.index ["public_id"], name: "index_conversations_on_public_id", unique: true
     t.index ["user_id"], name: "index_conversations_on_user_id"
   end

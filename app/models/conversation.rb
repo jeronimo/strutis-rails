@@ -5,9 +5,20 @@ class Conversation < ApplicationRecord
   belongs_to :user
   has_many :messages, -> { order(:id) }, dependent: :destroy
 
+  default_scope { where(deleted_at: nil) }
+  scope :with_deleted, -> { unscope(where: :deleted_at) }
+
   before_create { self.public_id = SecureRandom.hex(16) }
 
   validates :model, presence: true
+
+  def destroy
+    update_columns(deleted_at: Time.current)
+  end
+
+  def restore
+    update_columns(deleted_at: nil)
+  end
 
   def context_window
     OpenaiService.context_length(model)
