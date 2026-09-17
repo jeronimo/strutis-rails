@@ -9,9 +9,14 @@
           · #{format_ms(message.inference_ms)}
       %pre.small.mb-0
         = message.reasoning
-  - if message.content.present?
+  - if message.content.present? || message.attachments.any?
     .chat-bubble{ id: "message-content-#{message.id}", data: { final: message.latency_ms.present? } }
-      = render_message_markdown(message.content)
+      - if message.content.present?
+        = render_message_markdown(message.content)
+      - if message.attachments.any?
+        %ul.list-unstyled.mb-0
+          - message.attachments.each do |attachment|
+            %li= link_to attachment.filename.to_s, attachment, target: '_blank', rel: 'noopener'
   - if message.role == 'assistant' && message.latency_ms && message.content.present?
     .chat-meta.small.text-muted
       = message_breakdown(message)

@@ -19,6 +19,7 @@ gem 'sentry-rails'
 gem 'haml', '~> 7.3'
 gem 'haml-rails'
 gem 'commonmarker'
+gem 'aws-sdk-s3', require: false
 
 group :development, :test do
   gem 'debug', platforms: %i[mri windows], require: 'debug/prelude'

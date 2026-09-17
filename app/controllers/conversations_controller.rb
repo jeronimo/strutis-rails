@@ -19,16 +19,19 @@ class ConversationsController < ApplicationController
   def create
     model = create_params[:model].presence
     message = create_params[:message].presence
+    attachments = Array(create_params[:attachments]).compact_blank
     public_id = create_params[:conversation_public_id].presence
 
-    if model.blank? || message.blank?
-      render_conversation_error('Model and message are required.', :unprocessable_content)
+    if model.blank? || (message.blank? && attachments.empty?)
+      render_conversation_error('Model and a message or attachment are required.', :unprocessable_content)
       return
     end
 
-    return handle_compact(model, public_id) if message.strip == '/compact'
+    return handle_compact(model, public_id) if message&.strip == '/compact'
 
-    conversation = find_or_create_conversation(public_id, message, model)
+    blobs = upload_attachments(attachments)
+    content = message.presence || upload_note(blobs)
+    conversation = find_or_create_conversation(public_id, message.presence || blobs.first&.filename&.to_s || 'Attachment', model)
 
     if conversation.nil?
       render_conversation_error('Conversation not found.', :not_found)
@@ -38,10 +41,12 @@ class ConversationsController < ApplicationController
     apply_conversation_settings(conversation, model)
 
     if ConversationCompletionJob.active?(conversation.id)
-      conversation.messages.create!(role: 'user', content: message, model: model, queued: true)
+      queued_message = conversation.messages.create!(role: 'user', content: content, model: model, queued: true)
+      queued_message.attachments.attach(blobs)
       render turbo_stream: turbo_stream.replace("messages-#{conversation.public_id}", partial: 'conversations/messages_frame', locals: { conversation:, messages: conversation.messages, show_progress: true })
     else
-      user_message = conversation.messages.create!(role: 'user', content: message, model: model)
+      user_message = conversation.messages.create!(role: 'user', content: content, model: model)
+      user_message.attachments.attach(blobs)
       ConversationCompletionJob.perform_later(conversation.id)
       render_conversation_created(conversation, user_message, new_conversation: public_id.blank?)
     end
@@ -98,7 +103,7 @@ class ConversationsController < ApplicationController
   private
 
   def create_params
-    @create_params ||= params.permit(:model, :message, :conversation_public_id, :thinking, :reasoning_effort, :folder_id)
+    @create_params ||= params.permit(:model, :message, :conversation_public_id, :thinking, :reasoning_effort, :attachments, attachments: [])
   end
 
   def update_params
@@ -140,12 +145,20 @@ class ConversationsController < ApplicationController
     ]
   end
 
-  def find_or_create_conversation(public_id, message, model)
+  def upload_attachments(files)
+    files.map { |file| ActiveStorage::Blob.create_and_upload!(io: file, filename: file.original_filename, content_type: file.content_type.presence || 'application/octet-stream') }
+  end
+
+  def upload_note(blobs)
+    blobs.size == 1 ? 'Uploaded file:' : "Uploaded #{blobs.size} files:"
+  end
+
+  def find_or_create_conversation(public_id, title, model)
     if public_id
       current_user.conversations.find_by(public_id: public_id)
     else
       folder_id = valid_folder_id(create_params[:folder_id])
-      conversation = current_user.conversations.create!(title: message[0, Conversation::TITLE_PLACEHOLDER_LENGTH], model: model, folder_id: folder_id, position: first_tree_position(folder_id))
+      conversation = current_user.conversations.create!(title: title[0, Conversation::TITLE_PLACEHOLDER_LENGTH], model: model, folder_id: folder_id, position: first_tree_position(folder_id))
       system_content = current_user.effective_prompt('system')
       conversation.messages.create!(role: 'system', content: system_content, model: model) if system_content.present?
       conversation

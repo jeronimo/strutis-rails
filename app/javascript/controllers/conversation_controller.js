@@ -2,7 +2,7 @@ import { Controller } from "@hotwired/stimulus"
 import { subscribeConversation } from "controllers/conversation_stream"
 
 export default class extends Controller {
-  static targets = ["textarea", "form", "path", "messages", "submit", "scroll", "modelSelect", "thinking", "reasoningEffort", "contextWarning"]
+  static targets = ["textarea", "form", "path", "messages", "submit", "scroll", "modelSelect", "thinking", "reasoningEffort", "contextWarning", "attachments"]
 
   connect() {
     this.subscribe()
@@ -47,6 +47,7 @@ export default class extends Controller {
     }
     if (event.detail.success) {
       this.textareaTarget.value = ''
+      if (this.hasAttachmentsTarget) this.attachmentsTarget.value = ''
     }
   }
 
@@ -142,8 +143,17 @@ export default class extends Controller {
   }
 
   submitMessage() {
-    if (this.submitTarget.disabled || !this.textareaTarget.value.trim()) return
+    if (this.submitTarget.disabled) return
+    const hasText = this.textareaTarget.value.trim() !== ''
+    const hasFiles = this.hasAttachmentsTarget && this.attachmentsTarget.files.length > 0
+    if (!hasText && !hasFiles) return
     this.formTarget.requestSubmit()
+  }
+
+  handleAttachmentsChange() {
+    if (this.attachmentsTarget.files.length > 0) {
+      this.formTarget.requestSubmit()
+    }
   }
 
   updateUrl() {

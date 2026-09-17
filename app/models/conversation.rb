@@ -62,7 +62,8 @@ class Conversation < ApplicationRecord
 
   def title_generation_needed?
     first_user_message = messages.where(role: 'user').first
-    first_user_message && title == first_user_message.content[0, TITLE_PLACEHOLDER_LENGTH]
+    return false if first_user_message.blank? || first_user_message.content.blank?
+    title == first_user_message.content[0, TITLE_PLACEHOLDER_LENGTH]
   end
 
   def chat_template_kwargs

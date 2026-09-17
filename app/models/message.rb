@@ -1,5 +1,6 @@
 class Message < ApplicationRecord
   belongs_to :conversation
+  has_many_attached :attachments
 
   after_create :reset_conversation_tool_call_cache
   after_update :reset_conversation_tool_call_cache
@@ -17,15 +18,17 @@ class Message < ApplicationRecord
     JSON.pretty_generate(JSON.parse(content))
   rescue JSON::ParserError => e
     Rails.logger.error { "[Message] Malformed tool JSON in message #{id}: #{e.message}" }
+    Sentry.capture_exception(e)
     content
   end
 
   def tool_summary
     return unless role == 'tool'
     parsed = JSON.parse(content)
-    parsed['query'] || parsed['url'] if parsed.is_a?(Hash)
+    parsed['filename'] || parsed['query'] || parsed['url'] if parsed.is_a?(Hash)
   rescue JSON::ParserError => e
     Rails.logger.error { "[Message] Malformed tool JSON in message #{id}: #{e.message}" }
+    Sentry.capture_exception(e)
     nil
   end
 
@@ -40,13 +43,19 @@ class Message < ApplicationRecord
   end
 
   def to_prompt_entry
-    entry = { role: role, content: content }
+    entry = { role: role, content: prompt_content }
     entry[:tool_calls] = tool_calls if tool_calls.present?
     entry[:tool_call_id] = tool_call_id if tool_call_id.present?
     entry
   end
 
   private
+
+  def prompt_content
+    return content if attachments.empty?
+    files = attachments.map { |attachment| "- #{attachment.filename}: #{attachment.blob.url(expires_in: 1.hour)}" }
+    "#{content}\n#{files.join("\n")}"
+  end
 
   def reset_conversation_tool_call_cache
     conversation.reset_tool_call_names!

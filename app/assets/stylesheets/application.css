@@ -37,6 +37,10 @@
   overflow-wrap: break-word;
 }
 
+.chat-bubble p:has(+ ul) {
+  margin-bottom: 0;
+}
+
 .chat-bubble code {
   font-family: var(--bs-font-monospace);
   font-size: 0.875em;

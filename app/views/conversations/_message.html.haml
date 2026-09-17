@@ -4,5 +4,5 @@
 - when 'tool'
   = render 'conversations/tool_message', message: message
 - when 'user', 'assistant'
-  - if message.content.present? || (message.role == 'assistant' && message.reasoning.present?)
+  - if message.content.present? || message.attachments.any? || (message.role == 'assistant' && message.reasoning.present?)
     = render 'conversations/chat_message', message: message
