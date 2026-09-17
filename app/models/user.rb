@@ -7,6 +7,7 @@ class User < ApplicationRecord
   TWO_FACTOR_CODE_EXPIRY = 10.minutes
 
   has_many :conversations, dependent: :destroy
+  has_many :folders, dependent: :destroy
   has_many :prompts, dependent: :destroy
 
   before_create { self.authentication_token = SecureRandom.hex(20) if authentication_token.blank? }

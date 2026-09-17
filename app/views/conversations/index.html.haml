@@ -1,0 +1,12 @@
+%h4.mb-3 All conversations
+- if @conversation_groups.empty?
+  .text-muted No conversations yet.
+- @conversation_groups.each do |label, conversations|
+  .mb-4
+    %h6.text-muted.mb-2= label
+    .list-group
+      - conversations.each do |conversation|
+        .list-group-item.d-flex.align-items-center.gap-2
+          = link_to conversation_path(conversation.public_id), class: 'flex-grow-1 text-truncate text-decoration-none' do
+            = conversation.title.presence || 'Untitled'
+          %span.text-muted.small.whitespace-nowrap= conversation.updated_at.strftime('%b %d, %Y')

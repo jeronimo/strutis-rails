@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_16_155433) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_17_091741) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -44,8 +44,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_16_155433) do
     t.integer "context_tokens", default: 0, null: false
     t.datetime "created_at", null: false
     t.datetime "deleted_at"
+    t.bigint "folder_id"
     t.string "last_error"
     t.string "model", null: false
+    t.float "position", default: 0.0, null: false
     t.string "public_id", null: false
     t.string "reasoning_effort"
     t.text "summary"
@@ -54,8 +56,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_16_155433) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["deleted_at"], name: "index_conversations_on_deleted_at"
+    t.index ["folder_id"], name: "index_conversations_on_folder_id"
+    t.index ["position"], name: "index_conversations_on_position"
     t.index ["public_id"], name: "index_conversations_on_public_id", unique: true
     t.index ["user_id"], name: "index_conversations_on_user_id"
+  end
+
+  create_table "folders", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", default: "", null: false
+    t.bigint "parent_id"
+    t.float "position", default: 0.0, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["parent_id"], name: "index_folders_on_parent_id"
+    t.index ["position"], name: "index_folders_on_position"
+    t.index ["user_id"], name: "index_folders_on_user_id"
   end
 
   create_table "messages", force: :cascade do |t|
@@ -120,7 +136,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_16_155433) do
     t.index ["unlock_token"], name: "index_users_on_unlock_token", unique: true
   end
 
+  add_foreign_key "conversations", "folders"
   add_foreign_key "conversations", "users"
+  add_foreign_key "folders", "folders", column: "parent_id"
+  add_foreign_key "folders", "users"
   add_foreign_key "messages", "conversations"
   add_foreign_key "prompts", "users"
 end

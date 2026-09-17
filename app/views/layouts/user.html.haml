@@ -34,11 +34,15 @@
                 = image_tag 'logo.webp', alt: 'Strutis', class: 'strutis-logo'
                 %span Strutis
             - if current_user
-              .list-group#conversation-list
-                = link_to 'New Conversation', new_conversation_path, id: 'new-conversation', class: 'list-group-item list-group-item-action d-flex align-items-center gap-2'
-                - @conversations.each do |conversation|
-                  = render 'conversations/conversation_link', conversation: conversation, active: @conversation&.public_id == conversation.public_id
+              .list-group#conversation-list{ data: { controller: 'conversation-list', conversation_list_active_conversation: @conversation&.public_id.to_s } }
+                .list-group-item.new-conversation-row.d-flex.align-items-center
+                  = link_to 'New Conversation', new_conversation_path, id: 'new-conversation', class: 'flex-grow-1 d-flex align-items-center gap-2 text-decoration-none'
+                  %button.btn.btn-sm.conversation-menu-toggle{ type: 'button', 'aria-label': 'New folder', data: { new_folder_trigger: true } }
+                    = render 'icons/folder_plus'
+                = render 'conversations/tree', conversations: @conversations, folders: @folders, active_public_id: @conversation&.public_id
+              = render 'folders/new_folder_modal'
               .list-group.mt-2{ data: { turbo: false } }
+                = link_to 'View all', conversations_path, class: 'list-group-item list-group-item-action'
                 = link_to current_user.full_name.presence || current_user.email, edit_users_profile_path, class: 'list-group-item list-group-item-action'
                 = button_to 'Sign Out', destroy_user_session_path, method: :delete, class: 'btn btn-link p-0 w-100 text-start text-decoration-none', form: { class: 'list-group-item list-group-item-action' }
             - else

@@ -5,7 +5,7 @@ export default class extends Controller {
 
   connect() {
     this.drawerTarget.addEventListener('click', (event) => {
-      if (event.target.closest('a')) this.close()
+      if (event.target.closest('a:not(.folder-toggle)')) this.close()
     })
     this.backdropTarget.addEventListener('click', () => this.close())
   }

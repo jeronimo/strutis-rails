@@ -3,6 +3,7 @@ class Conversation < ApplicationRecord
   TITLE_PLACEHOLDER_LENGTH = 60
 
   belongs_to :user
+  belongs_to :folder, optional: true
   has_many :messages, -> { order(:id) }, dependent: :destroy
 
   default_scope { where(deleted_at: nil) }

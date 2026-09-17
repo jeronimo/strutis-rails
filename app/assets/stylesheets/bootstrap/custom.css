@@ -17,11 +17,12 @@
   --bs-list-group-active-border-color: var(--bs-primary);
 }
 
-.list-group > .list-group-item {
+.list-group > .list-group-item,
+.folder-row {
   border-color: rgba(var(--bs-primary-rgb), 0.2);
 }
 
-.list-group > .list-group-item:not(.active):hover {
+.list-group > .list-group-item:not(.active):not(.conversation-item):not(.folder-row):hover {
   background-color: rgba(var(--bs-primary-rgb), 0.05);
 }
 

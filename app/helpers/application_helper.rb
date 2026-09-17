@@ -24,11 +24,39 @@ module ApplicationHelper
     sanitize(html, tags: %w[p br strong em del a ul ol li code pre blockquote h1 h2 h3 h4 h5 h6 hr img table thead tbody tr th td], attributes: attributes)
   end
 
+  def conversation_tree(folders, conversations)
+    folders_by_parent = folders.group_by { |folder| folder.parent_id }
+    conversations_by_folder = conversations.group_by { |conversation| conversation.folder_id }
+    build_tree_level(folders_by_parent, conversations_by_folder, nil)
+  end
+
+  def render_tree_item(node, active_public_id:)
+    if node[:folder]
+      render 'folders/folder', folder: node[:folder], children: node[:children], active_public_id: active_public_id
+    else
+      conversation = node[:conversation]
+      render 'conversations/link', conversation: conversation, active: conversation.public_id == active_public_id
+    end
+  end
+
   def render_flash(namespace)
     return unless flash[namespace]
 
     safe_join(flash[namespace].map do |type, message|
       content_tag(:div, message, class: "alert alert-#{type == 'notice' ? 'success' : 'danger'}")
     end)
+  end
+
+  private
+
+  def build_tree_level(folders_by_parent, conversations_by_folder, parent_id)
+    merge_tree_items(folders_by_parent[parent_id] || [], conversations_by_folder[parent_id] || [])
+      .map do |item|
+        item.is_a?(Folder) ? { folder: item, children: build_tree_level(folders_by_parent, conversations_by_folder, item.id) } : { conversation: item }
+      end
+  end
+
+  def merge_tree_items(folders, conversations)
+    (folders + conversations).sort_by { |item| [ item.position, item.id ] }
   end
 end

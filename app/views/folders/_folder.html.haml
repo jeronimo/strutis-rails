@@ -1,0 +1,28 @@
+.folder{ id: dom_id(folder), data: { type: 'folder', id: folder.id, position: folder.position } }
+  .list-group-item.folder-row{ data: { controller: 'folder-menu' } }
+    %span.drag-handle{ 'aria-hidden': true }
+      = render 'icons/grip'
+    %a.folder-toggle.text-muted.text-decoration-none{ href: "#folder-children-#{folder.id}", data: { bs_toggle: 'collapse' }, 'aria-expanded': 'true', 'aria-label': 'Toggle folder' }
+      = render 'icons/chevron_down'
+    %span.folder-name.flex-grow-1.text-truncate{ id: "folder-name-#{folder.id}", data: { folder_menu_target: 'name' } }= folder.name
+    = form_with url: folder_path(folder), method: :patch, class: 'folder-rename-form d-none flex-grow-1', data: { folder_menu_target: 'form' } do
+      = text_field_tag :name, folder.name, class: 'form-control form-control-sm', data: { folder_menu_target: 'input', action: 'keydown->folder-menu#handleKeydown blur->folder-menu#handleBlur' }
+    .dropdown
+      %button.btn.btn-sm.conversation-menu-toggle{ type: 'button', 'aria-label': 'Folder options', 'aria-expanded': 'false', data: { bs_toggle: 'dropdown', bs_auto_close: 'outside', folder_menu_target: 'toggle' } }
+        = render 'icons/menu_dots'
+      %ul.dropdown-menu.dropdown-menu-end
+        %li
+          = link_to 'New conversation', new_conversation_path(folder_id: folder.id), class: 'dropdown-item', data: { bs_dismiss: 'dropdown' }
+        %li
+          %button.dropdown-item.d-flex.align-items-center.gap-2{ type: 'button', data: { new_folder_trigger: true, parent_id: folder.id } }
+            New subfolder
+            = render 'icons/folder_plus'
+        %li
+          %button.dropdown-item{ type: 'button', data: { action: 'folder-menu#rename', bs_dismiss: 'dropdown' } } Rename
+        %li
+          = button_to 'Delete', folder_path(folder), method: :delete, class: 'dropdown-item conversation-delete',
+            form: { class: 'd-inline', data: { turbo_confirm: 'Delete this folder? Subfolders are deleted, conversations move to ungrouped.' } }
+  .collapse.show{ id: "folder-children-#{folder.id}" }
+    .folder-children.list-group{ id: "conversation-items-#{folder.id}", data: { conversation_list_target: 'items', folder_id: folder.id } }
+      - children.each do |node|
+        = render_tree_item(node, active_public_id: active_public_id)

@@ -14,6 +14,12 @@ class ApplicationController < ActionController::Base
   private
 
   def load_conversations
-    @conversations = current_user ? current_user.conversations.order(created_at: :desc) : []
+    if current_user
+      @conversations = current_user.conversations.order(:position, :id).to_a
+      @folders = current_user.folders.order(:position, :id).to_a
+    else
+      @conversations = []
+      @folders = []
+    end
   end
 end

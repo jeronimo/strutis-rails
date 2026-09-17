@@ -10,6 +10,7 @@
     = form_with url: conversations_path, method: :post, html: { id: 'conversation-form', class: shared ? 'flex-shrink-0 d-none' : 'flex-shrink-0' },
       data: { conversation_target: 'form', action: 'turbo:submit-start->conversation#disableForm turbo:submit-end->conversation#handleSubmitEnd' } do
       = render 'conversations/conversation_hidden_fields', conversation: conversation
+      = hidden_field_tag :folder_id, folder_id
       .alert.alert-warning.d-none.mb-2{ data: { conversation_target: 'contextWarning' } }
         .d-flex.align-items-center.justify-content-between.gap-2
           %span.context-warning-message Context exceeds the selected model's limit.

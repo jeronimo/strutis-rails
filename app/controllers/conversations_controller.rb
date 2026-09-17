@@ -1,10 +1,12 @@
 class ConversationsController < ApplicationController
   layout 'user'
+  include ConversationTree
   before_action :authenticate_user!, except: :show
   before_action :load_conversations
 
   def new
     @conversation = nil
+    @folder_id = valid_folder_id(params[:folder_id])
     setup_conversation_model
   end
 
@@ -62,6 +64,26 @@ class ConversationsController < ApplicationController
     render turbo_stream: streams
   end
 
+  def move
+    conversation = current_user.conversations.find_by!(public_id: params[:id])
+    move_tree_item(conversation, attribute: :folder_id, parent_id: move_params[:folder_id].presence, prev: find_tree_item(move_params[:prev_type], move_params[:prev_id]), following: find_tree_item(move_params[:next_type], move_params[:next_id]))
+  end
+
+  def index
+    today = Time.current.beginning_of_day
+    yesterday = today - 1.day
+    week_ago = 6.days.ago.beginning_of_day
+    month_ago = 30.days.ago.beginning_of_day
+    @conversation_groups = [
+      [ 'Today', ->(conversation) { conversation.updated_at >= today } ],
+      [ 'Yesterday', ->(conversation) { conversation.updated_at >= yesterday && conversation.updated_at < today } ],
+      [ 'Previous 7 days', ->(conversation) { conversation.updated_at >= week_ago && conversation.updated_at < yesterday } ],
+      [ 'Previous 30 days', ->(conversation) { conversation.updated_at >= month_ago && conversation.updated_at < week_ago } ],
+      [ 'Older', ->(conversation) { conversation.updated_at < month_ago } ]
+    ].map { |label, predicate| [ label, @conversations.select(&predicate).sort_by { |conversation| conversation.updated_at }.reverse ] }
+      .select { |_, conversations| conversations.any? }
+  end
+
   def destroy
     conversation = current_user.conversations.find_by!(public_id: params[:id])
     conversation.destroy!
@@ -76,11 +98,21 @@ class ConversationsController < ApplicationController
   private
 
   def create_params
-    @create_params ||= params.permit(:model, :message, :conversation_public_id, :thinking, :reasoning_effort)
+    @create_params ||= params.permit(:model, :message, :conversation_public_id, :thinking, :reasoning_effort, :folder_id)
   end
 
   def update_params
     params.permit(:title)
+  end
+
+  def move_params
+    params.permit(:folder_id, :prev_type, :prev_id, :next_type, :next_id)
+  end
+
+  def valid_folder_id(folder_id)
+    return nil if folder_id.blank?
+
+    current_user.folders.find_by(id: folder_id)&.id
   end
 
   def apply_conversation_settings(conversation, model)
@@ -112,7 +144,8 @@ class ConversationsController < ApplicationController
     if public_id
       current_user.conversations.find_by(public_id: public_id)
     else
-      conversation = current_user.conversations.create!(title: message[0, Conversation::TITLE_PLACEHOLDER_LENGTH], model: model)
+      folder_id = valid_folder_id(create_params[:folder_id])
+      conversation = current_user.conversations.create!(title: message[0, Conversation::TITLE_PLACEHOLDER_LENGTH], model: model, folder_id: folder_id, position: first_tree_position(folder_id))
       system_content = current_user.effective_prompt('system')
       conversation.messages.create!(role: 'system', content: system_content, model: model) if system_content.present?
       conversation
@@ -175,7 +208,8 @@ class ConversationsController < ApplicationController
   end
 
   def conversation_list_stream(conversation, active:)
-    turbo_stream.after('new-conversation', partial: 'conversations/conversation_link', locals: { conversation:, active: })
+    target = conversation.folder_id ? "conversation-items-#{conversation.folder_id}" : 'conversation-items-root'
+    turbo_stream.prepend(target, partial: 'conversations/link', locals: { conversation:, active: })
   end
 
   def user_message_stream(conversation, user_message, new_conversation:)
