@@ -50,6 +50,10 @@ class ConversationsController < ApplicationController
       ConversationCompletionJob.perform_later(conversation.id)
       render_conversation_created(conversation, user_message, new_conversation: public_id.blank?)
     end
+  rescue StandardError => e
+    Sentry.capture_exception(e)
+    Rails.logger.error { "[ConversationsController#create] #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
+    render_conversation_error('Something went wrong. Please try again.', :internal_server_error)
   end
 
   def stop
