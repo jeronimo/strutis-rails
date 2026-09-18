@@ -317,26 +317,22 @@ input[readonly]:focus {
   background-color: rgba(var(--bs-primary-rgb), 0.05);
 }
 
-.folder .conversation-item::after,
-.folder .folder-row::after {
+.folder .folder-children > *::after {
   content: '';
   position: absolute;
+  top: 0;
   left: 0.5rem;
   right: 0.5rem;
-  bottom: 2px;
-  border-bottom: 1px solid rgba(var(--bs-primary-rgb), 0.2);
-}
-
-.folder-children > .conversation-item:last-child::after,
-.folder-children > .folder:last-child > .folder-row:has(+ .collapse:not(.show))::after {
-  display: none;
+  border-top: 1px solid rgba(var(--bs-primary-rgb), 0.2);
 }
 
 .folder-row {
+  background-color: rgba(var(--bs-secondary-rgb), 0.08);
   font-weight: 500;
 }
 
 .folder {
+  position: relative;
   border: 1px solid rgba(var(--bs-primary-rgb), 0.2);
   border-radius: var(--bs-border-radius);
 }

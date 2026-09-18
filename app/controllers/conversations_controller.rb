@@ -107,7 +107,7 @@ class ConversationsController < ApplicationController
   private
 
   def create_params
-    @create_params ||= params.permit(:model, :message, :conversation_public_id, :thinking, :reasoning_effort, :attachments, attachments: [])
+    @create_params ||= params.permit(:model, :message, :conversation_public_id, :folder_id, :thinking, :reasoning_effort, :attachments, attachments: [])
   end
 
   def update_params

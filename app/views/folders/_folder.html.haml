@@ -12,16 +12,22 @@
         = render 'icons/menu_dots'
       %ul.dropdown-menu.dropdown-menu-end
         %li
-          = link_to 'New conversation', new_conversation_path(folder_id: folder.id), class: 'dropdown-item', data: { bs_dismiss: 'dropdown' }
+          = link_to new_conversation_path(folder_id: folder.id), class: 'dropdown-item d-flex align-items-center gap-2', data: { bs_dismiss: 'dropdown' } do
+            = render 'icons/message_plus'
+            New conversation
         %li
           %button.dropdown-item.d-flex.align-items-center.gap-2{ type: 'button', data: { new_folder_trigger: true, parent_id: folder.id } }
-            New subfolder
             = render 'icons/folder_plus'
+            New subfolder
         %li
-          %button.dropdown-item{ type: 'button', data: { action: 'folder-menu#rename', bs_dismiss: 'dropdown' } } Rename
+          %button.dropdown-item.d-flex.align-items-center.gap-2{ type: 'button', data: { action: 'folder-menu#rename', bs_dismiss: 'dropdown' } }
+            = render 'icons/pencil'
+            Rename
         %li
-          = button_to 'Delete', folder_path(folder), method: :delete, class: 'dropdown-item conversation-delete',
-            form: { class: 'd-inline', data: { turbo_confirm: 'Delete this folder? Subfolders are deleted, conversations move to ungrouped.' } }
+          = button_to folder_path(folder), method: :delete, class: 'dropdown-item conversation-delete d-flex align-items-center gap-2',
+            form: { class: 'd-inline', data: { turbo_confirm: 'Delete this folder? Subfolders are deleted, conversations move to ungrouped.' } } do
+            = render 'icons/trash'
+            Delete
   .collapse.show{ id: "folder-children-#{folder.id}" }
     .folder-children.list-group{ id: "conversation-items-#{folder.id}", data: { conversation_list_target: 'items', folder_id: folder.id } }
       - children.each do |node|

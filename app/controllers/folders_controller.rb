@@ -5,7 +5,7 @@ class FoldersController < ApplicationController
   before_action :load_conversations
 
   def create
-    folder = current_user.folders.create!(name: create_params[:name].to_s.strip, parent: find_tree_item('folder', create_params[:parent_id]), position: last_tree_position(create_params[:parent_id].presence))
+    folder = current_user.folders.create!(name: create_params[:name].to_s.strip, parent: find_tree_item('folder', create_params[:parent_id]), position: first_tree_position(create_params[:parent_id].presence))
     render_tree
   end
 
@@ -17,6 +17,8 @@ class FoldersController < ApplicationController
 
   def destroy
     folder = current_user.folders.find(params[:id])
+    folder_ids = [ folder.id, *folder.descendant_ids ]
+    current_user.conversations.where(folder_id: folder_ids).update_all(folder_id: folder.parent_id)
     folder.destroy!
     render_tree
   end

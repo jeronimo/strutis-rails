@@ -69,11 +69,6 @@ export default class extends Controller {
         return response.text()
       })
       .then((html) => Turbo.streamHTML(html))
-      .then(() => {
-        this.destroySortables()
-        this.initSortables()
-        this.applyCollapsedState()
-      })
       .catch(() => window.location.reload())
   }
 
