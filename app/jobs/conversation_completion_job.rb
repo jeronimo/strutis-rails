@@ -65,6 +65,11 @@ class ConversationCompletionJob < ApplicationJob
       end
       compact_conversation if @conversation.compaction_needed? || @conversation.prompt_over_budget?
       result = stream_turn(tools)
+      if result[:stopped]
+        @stopped = true
+        @message.update!(content: result[:content]) if @message && result[:content].present?
+        break
+      end
       accumulate_metrics(metrics, result)
       record_context_tokens(result)
       if result[:tool_calls].present?
@@ -79,7 +84,8 @@ class ConversationCompletionJob < ApplicationJob
   def stream_turn(tools)
     @message = nil
     result = OpenaiService.completion(@conversation.prompt_messages, @conversation.model, @conversation.public_id, tools: tools,
-      chat_template_kwargs: @conversation.chat_template_kwargs) do |delta|
+      chat_template_kwargs: @conversation.chat_template_kwargs,
+      should_stop: -> { self.class.stop_requested?(@conversation.id) }) do |delta|
       if @message.nil?
         @message = @conversation.messages.create!(role: 'assistant', content: delta, model: @conversation.model)
         broadcast_frame(show_progress: false)

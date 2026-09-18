@@ -6,6 +6,7 @@ class OpenaiService
   STREAM_READ_TIMEOUT = 3600
 
   class Error < StandardError; end
+  class StoppedError < StandardError; end
 
   MODELS_TTL = 600
 
@@ -42,7 +43,7 @@ class OpenaiService
     request('GET', '/v1/tools', nil)[:data] || []
   end
 
-  def self.completion(messages, model, conversation_id = nil, tools: nil, max_tokens: nil, chat_template_kwargs: nil)
+  def self.completion(messages, model, conversation_id = nil, tools: nil, max_tokens: nil, chat_template_kwargs: nil, should_stop: nil)
     request_body = { model: model, messages: messages, stream: true, stream_options: { include_usage: true } }
     request_body[:conversation_id] = conversation_id if conversation_id
     request_body[:tools] = tools.map { |tool| tool.except(:endpoint).tap { |t| t[:function] = t[:function].merge(strict: true) if t[:function].is_a?(Hash) } } if tools.present?
@@ -54,16 +55,21 @@ class OpenaiService
     content = +''
     reasoning = +''
     tool_calls = {}
-    stream_request('/v1/chat/completions', request_body, conversation_id, timing, usage) do |delta|
-      if delta[:content].present?
-        content << delta[:content]
-        yield delta[:content] if block_given?
+    stopped = false
+    begin
+      stream_request('/v1/chat/completions', request_body, conversation_id, timing, usage, should_stop: should_stop) do |delta|
+        if delta[:content].present?
+          content << delta[:content]
+          yield delta[:content] if block_given?
+        end
+        reasoning << delta[:reasoning] if delta[:reasoning].present?
+        accumulate_tool_calls(tool_calls, delta[:tool_calls])
       end
-      reasoning << delta[:reasoning] if delta[:reasoning].present?
-      accumulate_tool_calls(tool_calls, delta[:tool_calls])
+    rescue StoppedError
+      stopped = true
     end
 
-    { content: content, reasoning: reasoning.presence, tool_calls: normalize_tool_calls(tool_calls), latency_ms: timing[:latency_ms], inference_ms: timing[:inference_ms],
+    { content: content, reasoning: reasoning.presence, tool_calls: normalize_tool_calls(tool_calls), stopped: stopped, latency_ms: timing[:latency_ms], inference_ms: timing[:inference_ms],
       prompt_tokens: usage[:prompt_tokens], completion_tokens: usage[:completion_tokens],
       reasoning_tokens: usage.dig(:completion_tokens_details, :reasoning_tokens) }
   end
@@ -173,7 +179,7 @@ class OpenaiService
     JSON.parse(response.body, symbolize_names: true)
   end
 
-  def self.stream_request(path, body, conversation_id, timing, usage)
+  def self.stream_request(path, body, conversation_id, timing, usage, should_stop: nil)
     http, uri, request = build_request('POST', path, body, conversation_id)
     http.read_timeout = STREAM_READ_TIMEOUT
     log_request(request, uri, body)
@@ -189,6 +195,7 @@ class OpenaiService
       end
 
       response.read_body do |chunk|
+        raise StoppedError if should_stop&.call
         buffer << chunk
         buffer.gsub!("\r\n", "\n")
         while (separator = buffer.index("\n\n"))
