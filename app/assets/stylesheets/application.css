@@ -375,7 +375,7 @@ input[readonly]:focus {
   transform: rotate(-90deg);
 }
 
-.folder > .collapse > .folder-children {
+.folder > .folder-children-collapse {
   margin-left: 1.25rem;
 }
 

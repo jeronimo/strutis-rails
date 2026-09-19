@@ -23,6 +23,12 @@ class FoldersController < ApplicationController
     render_tree
   end
 
+  def toggle
+    folder = current_user.folders.find(params[:id])
+    folder.update!(collapsed: !folder.collapsed?)
+    render_tree
+  end
+
   def move
     folder = current_user.folders.find(params[:id])
     parent_id = move_params[:parent_id].presence

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_09_17_151424) do
+ActiveRecord::Schema[8.1].define(version: 2026_09_19_143036) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -91,6 +91,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_09_17_151424) do
   end
 
   create_table "folders", force: :cascade do |t|
+    t.boolean "collapsed", default: false, null: false
     t.datetime "created_at", null: false
     t.string "name", default: "", null: false
     t.bigint "parent_id"

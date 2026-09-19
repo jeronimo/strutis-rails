@@ -2,7 +2,8 @@
   .folder-header.d-flex.align-items-center.gap-2{ data: { controller: 'folder-menu' } }
     %span.drag-handle{ 'aria-hidden': true }
       = render 'icons/grip'
-    %a.folder-toggle.text-muted.text-decoration-none{ href: "#folder-children-#{folder.id}", data: { bs_toggle: 'collapse' }, 'aria-expanded': 'true', 'aria-label': 'Toggle folder' }
+    = link_to toggle_folder_path(folder, active_conversation_public_id: active_public_id), \
+      class: 'folder-toggle text-muted text-decoration-none', data: { turbo_method: :patch }, 'aria-expanded': folder.collapsed? ? 'false' : 'true', 'aria-label': 'Toggle folder' do
       = render 'icons/chevron_down'
     %span.folder-name.fw-medium.flex-grow-1.text-truncate{ id: "folder-name-#{folder.id}", data: { folder_menu_target: 'name' } }= folder.name
     = form_with url: folder_path(folder), method: :patch, class: 'folder-rename-form d-none flex-grow-1', data: { folder_menu_target: 'form' } do
@@ -28,7 +29,7 @@
             form: { class: 'd-inline', data: { turbo_confirm: 'Delete this folder? Subfolders are deleted, conversations move to ungrouped.' } } do
             = render 'icons/trash'
             Delete
-  .collapse.show{ id: "folder-children-#{folder.id}" }
+  .folder-children-collapse{ id: "folder-children-#{folder.id}", class: folder.collapsed? ? 'd-none' : nil }
     .list-group.list-group-flush.folder-children{ id: "conversation-items-#{folder.id}", data: { conversation_list_target: 'items', folder_id: folder.id } }
       - children.each do |node|
         = render_tree_item(node, active_public_id: active_public_id)

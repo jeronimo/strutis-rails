@@ -1,14 +1,10 @@
 import { Controller } from "@hotwired/stimulus"
 
-const COLLAPSED_KEY = "conversation-drawer-collapsed-folders"
-
 export default class extends Controller {
   static targets = ["items"]
 
   connect() {
-    this.element.addEventListener("click", (event) => this.handleClick(event))
     this.initSortables()
-    this.applyCollapsedState()
   }
 
   disconnect() {
@@ -30,12 +26,6 @@ export default class extends Controller {
   destroySortables() {
     (this.sortables || []).forEach((sortable) => sortable.destroy())
     this.sortables = []
-  }
-
-  handleClick(event) {
-    const toggle = event.target.closest(".folder-toggle")
-    if (!toggle) return
-    setTimeout(() => this.saveCollapsedState(), 0)
   }
 
   handleEnd(event) {
@@ -72,21 +62,4 @@ export default class extends Controller {
       .catch(() => window.location.reload())
   }
 
-  saveCollapsedState() {
-    const collapsed = []
-    this.element.querySelectorAll(".collapse[id^='folder-children-']").forEach((element) => {
-      if (!element.classList.contains("show")) collapsed.push(element.id.replace("folder-children-", ""))
-    })
-    localStorage.setItem(COLLAPSED_KEY, JSON.stringify(collapsed))
-  }
-
-  applyCollapsedState() {
-    const collapsed = JSON.parse(localStorage.getItem(COLLAPSED_KEY) || "[]")
-    collapsed.forEach((id) => {
-      const children = document.getElementById(`folder-children-${id}`)
-      if (children && children.classList.contains("show")) children.classList.remove("show")
-      const toggle = document.querySelector(`.folder-toggle[href="#folder-children-${id}"]`)
-      if (toggle) toggle.setAttribute("aria-expanded", "false")
-    })
-  }
 }

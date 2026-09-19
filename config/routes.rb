@@ -43,6 +43,7 @@ Rails.application.routes.draw do
 
   resources :folders, only: [ :create, :update, :destroy ] do
     patch 'move', on: :member
+    patch 'toggle', on: :member
   end
 
   # Render dynamic PWA files from app/views/pwa/* (remember to link manifest in application.html.erb)
