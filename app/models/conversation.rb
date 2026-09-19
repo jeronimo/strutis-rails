@@ -48,12 +48,6 @@ class Conversation < ApplicationRecord
     (content_chars / ConversationCompactionService::CHARS_PER_TOKEN.to_f).ceil + entries.size * ConversationCompactionService::TEMPLATE_TOKENS_PER_MESSAGE
   end
 
-  def tool_result_char_budget
-    window = context_window
-    return nil unless window.to_i.positive?
-    (window * (1 - COMPACT_THRESHOLD) * ConversationCompactionService::CHARS_PER_TOKEN).to_i
-  end
-
   def compactable?
     last_user_message = messages.where(compacted_at: nil).where(role: 'user').order(:id).last
     return false unless last_user_message

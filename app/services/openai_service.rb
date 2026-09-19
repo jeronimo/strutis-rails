@@ -74,7 +74,7 @@ class OpenaiService
       reasoning_tokens: usage.dig(:completion_tokens_details, :reasoning_tokens) }
   end
 
-  def self.execute_tool(tool_call, tools, char_budget: nil)
+  def self.execute_tool(tool_call, tools)
     configure
     name = tool_call.dig(:function, :name)
     definition = tools.find { |tool| tool.dig(:function, :name) == name }
@@ -98,7 +98,7 @@ class OpenaiService
 
     body = response.body.force_encoding(Encoding::UTF_8)
     return "Tool error (#{name}): response is not valid UTF-8" unless body.valid_encoding?
-    truncate_tool_result(body, char_budget)
+    body
   rescue JSON::ParserError => e
     Sentry.capture_exception(e)
     "Tool error (#{name}): invalid arguments: #{e.message}"
@@ -114,27 +114,6 @@ class OpenaiService
   end
 
   private
-
-  def self.truncate_tool_result(body, budget)
-    return body if budget.nil? || body.length <= budget
-
-    parsed = JSON.parse(body)
-    if parsed.is_a?(Hash)
-      largest_key, largest_value = parsed.max_by { |_, value| value.is_a?(String) ? value.length : 0 }
-      if largest_value.is_a?(String) && largest_value.length * 2 >= body.length
-        field_budget = budget - (body.length - largest_value.length)
-        if field_budget.positive?
-          parsed[largest_key] = "#{largest_value[0...field_budget]}\n[truncated: first #{field_budget} of #{largest_value.length} chars]"
-          parsed['truncated'] = true
-          return parsed.to_json
-        end
-      end
-    end
-    "#{body[0...budget]}\n[truncated: first #{budget} of #{body.length} chars]"
-  rescue JSON::ParserError => e
-    Sentry.capture_exception(e)
-    "#{body[0...budget]}\n[truncated: first #{budget} of #{body.length} chars]"
-  end
 
   def self.error_detail(response)
     body = response.body.to_s
