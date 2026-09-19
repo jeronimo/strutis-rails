@@ -2,8 +2,8 @@
   .folder-header.d-flex.align-items-center.gap-2{ data: { controller: 'folder-menu' } }
     %span.drag-handle{ 'aria-hidden': true }
       = render 'icons/grip'
-    = link_to toggle_folder_path(folder, active_conversation_public_id: active_public_id), \
-      class: 'folder-toggle text-muted text-decoration-none', data: { turbo_method: :patch }, 'aria-expanded': folder.collapsed? ? 'false' : 'true', 'aria-label': 'Toggle folder' do
+    = link_to toggle_folder_path(folder, active_conversation_public_id: active_public_id), class: 'folder-toggle text-muted text-decoration-none',
+      data: { turbo_method: :patch }, 'aria-expanded': folder.collapsed? ? 'false' : 'true', 'aria-label': 'Toggle folder' do
       = render 'icons/chevron_down'
     %span.folder-name.fw-medium.flex-grow-1.text-truncate{ id: "folder-name-#{folder.id}", data: { folder_menu_target: 'name' } }= folder.name
     = form_with url: folder_path(folder), method: :patch, class: 'folder-rename-form d-none flex-grow-1', data: { folder_menu_target: 'form' } do
