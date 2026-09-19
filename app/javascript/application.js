@@ -19,7 +19,7 @@ document.addEventListener("click", (event) => {
   const template = document.querySelector("#new-folder-form-template")
   const form = template.content.querySelector("form").cloneNode(true)
   form.querySelector("#new-folder-parent-id").value = trigger.dataset.parentId || ""
-  const anchor = trigger.closest(".folder-row") || trigger.closest(".new-conversation-row") || trigger
+  const anchor = trigger.closest(".folder-header") || trigger.closest(".new-conversation-row") || trigger
   newFolderPopover = window.bootstrap.Popover.getOrCreateInstance(anchor, {
     html: true,
     trigger: "manual",

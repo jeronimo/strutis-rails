@@ -34,17 +34,19 @@
                 = image_tag 'logo.webp', alt: 'Strutis', class: 'strutis-logo'
                 %span Strutis
             - if current_user
-              .list-group#conversation-list
-                .list-group-item.new-conversation-row.d-flex.align-items-center
+              .list-group.list-group-flush#conversation-list
+                .list-group-item.new-conversation-row.d-flex.align-items-center.gap-2
                   = link_to new_conversation_path, id: 'new-conversation', class: 'flex-grow-1 d-flex align-items-center gap-2 text-decoration-none' do
                     = render 'icons/message_plus'
                     New Conversation
                   %button.btn.btn-sm.conversation-menu-toggle{ type: 'button', 'aria-label': 'New folder', data: { new_folder_trigger: true } }
                     = render 'icons/folder_plus'
                 = render 'conversations/tree', conversations: @conversations, folders: @folders, active_public_id: @conversation&.public_id
+                = link_to conversations_path, class: 'list-group-item view-all-row text-muted d-flex align-items-center gap-2' do
+                  = render 'icons/list'
+                  View all
               = render 'folders/new_folder_modal'
               .list-group.mt-2{ data: { turbo: false } }
-                = link_to 'View all', conversations_path, class: 'list-group-item list-group-item-action'
                 = link_to current_user.full_name.presence || current_user.email, edit_users_profile_path, class: 'list-group-item list-group-item-action'
                 = button_to 'Sign Out', destroy_user_session_path, method: :delete, class: 'btn btn-link p-0 w-100 text-start text-decoration-none', form: { class: 'list-group-item list-group-item-action' }
             - else

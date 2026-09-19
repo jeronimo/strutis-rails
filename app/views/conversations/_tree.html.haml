@@ -1,4 +1,4 @@
 #conversation-tree{ data: { controller: 'conversation-list', conversation_list_active_conversation: active_public_id.to_s } }
-  .folder-children.list-group#conversation-items-root{ data: { conversation_list_target: 'items', folder_id: nil } }
+  .list-group.list-group-flush.folder-children#conversation-items-root{ data: { conversation_list_target: 'items', folder_id: nil } }
     - conversation_tree(folders, conversations).each do |node|
       = render_tree_item(node, active_public_id: active_public_id)

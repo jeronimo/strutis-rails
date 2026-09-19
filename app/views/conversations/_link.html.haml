@@ -1,5 +1,5 @@
 - title = conversation.title.presence || 'Untitled'
-.list-group-item.conversation-item{ id: dom_id(conversation), class: active ? 'active' : nil,
+.conversation-item.list-group-item.d-flex.align-items-center.gap-2{ id: dom_id(conversation), class: active ? 'active' : nil,
   data: { controller: 'conversation-menu', type: 'conversation', id: conversation.public_id, position: conversation.position } }
   %span.drag-handle{ 'aria-hidden': true }
     = render 'icons/grip'
