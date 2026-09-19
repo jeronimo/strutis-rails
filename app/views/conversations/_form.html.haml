@@ -36,5 +36,4 @@
           = file_field_tag 'attachments[]', multiple: true, class: 'visually-hidden', id: 'conversation-attachments',
             data: { conversation_target: 'attachments', action: 'change->conversation#handleAttachmentsChange' }
           = button_tag type: 'submit', class: 'btn btn-primary chat-send-btn', 'data-conversation-target': 'submit', 'aria-label': 'Send message' do
-            %svg{ xmlns: 'http://www.w3.org/2000/svg', width: 16, height: 16, fill: 'currentColor', viewBox: '0 0 16 16', 'aria-hidden': true }
-              %path{ d: 'M8 1l7 7h-4v7H5V8H1l7-7z' }
+            = render 'icons/send'
