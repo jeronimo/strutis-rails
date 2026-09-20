@@ -16,10 +16,7 @@ class FoldersController < ApplicationController
   end
 
   def destroy
-    folder = current_user.folders.find(params[:id])
-    folder_ids = [ folder.id, *folder.descendant_ids ]
-    current_user.conversations.where(folder_id: folder_ids).update_all(folder_id: folder.parent_id)
-    folder.destroy!
+    current_user.folders.find(params[:id]).destroy!
     render_tree
   end
 

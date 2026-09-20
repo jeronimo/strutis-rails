@@ -6,11 +6,19 @@ class Folder < ApplicationRecord
 
   validates :name, presence: true
 
+  before_destroy -> { reassign_conversations }, prepend: true
+
   def descendant_ids
     children.flat_map { |child| [ child.id, *child.descendant_ids ] }
   end
 
   def ancestor_of?(folder)
     folder.id == id || descendant_ids.include?(folder.id)
+  end
+
+  private
+
+  def reassign_conversations
+    Conversation.with_deleted.where(folder_id: [ id, *descendant_ids ]).update_all(folder_id: parent_id)
   end
 end
