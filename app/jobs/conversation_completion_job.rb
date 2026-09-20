@@ -18,6 +18,7 @@ class ConversationCompletionJob < ApplicationJob
     @@active[conversation_id] = true
     @conversation = Conversation.find_by(id: conversation_id)
     return unless @conversation
+    @openai = @conversation.openai_service
 
     @finalized = false
     @failure = nil
@@ -56,7 +57,7 @@ class ConversationCompletionJob < ApplicationJob
   end
 
   def run_completion
-    tools = OpenaiService.tools
+    tools = @openai.tools
     metrics = { prompt_tokens: 0, completion_tokens: 0, reasoning_tokens: 0, latency_ms: 0, inference_ms: 0 }
     loop do
       if self.class.stop_requested?(@conversation.id)
@@ -83,7 +84,7 @@ class ConversationCompletionJob < ApplicationJob
 
   def stream_turn(tools)
     @message = nil
-    result = OpenaiService.completion(@conversation.prompt_messages, @conversation.model, @conversation.public_id, tools: tools,
+    result = @openai.completion(@conversation.prompt_messages, @conversation.model, tools: tools,
       chat_template_kwargs: @conversation.chat_template_kwargs,
       should_stop: -> { self.class.stop_requested?(@conversation.id) }) do |delta|
       if @message.nil?
@@ -109,7 +110,7 @@ class ConversationCompletionJob < ApplicationJob
     broadcast_frame(show_progress: true)
     result[:tool_calls].each do |tool_call|
       start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      tool_result = OpenaiService.execute_tool(tool_call, tools)
+      tool_result = @openai.execute_tool(tool_call, tools)
       tool_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
       @conversation.messages.create!(role: 'tool', tool_call_id: tool_call[:id], content: tool_result, latency_ms: tool_ms, inference_ms: tool_ms, model: @conversation.model)
     end
@@ -117,7 +118,7 @@ class ConversationCompletionJob < ApplicationJob
   end
 
   def compact_conversation
-    ConversationCompactionService.perform(@conversation)
+    ConversationCompactionService.perform(@conversation, @openai)
   end
 
   def record_context_tokens(result)

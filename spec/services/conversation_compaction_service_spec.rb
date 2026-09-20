@@ -3,6 +3,7 @@ require 'rails_helper'
 RSpec.describe ConversationCompactionService do
   let(:user) { User.create!(email: 'compaction-user@example.com', password: 'password123') }
   let(:conversation) { user.conversations.create!(model: 'test-model') }
+  let(:openai) { instance_double(OpenaiService) }
 
   before do
     Prompt.create!(key: 'compacting', user_id: nil, content: Prompt::COMPACTING_DEFAULT)
@@ -13,9 +14,9 @@ RSpec.describe ConversationCompactionService do
     old_user = conversation.messages.create!(role: 'user', content: 'old')
     old_assistant = conversation.messages.create!(role: 'assistant', content: 'old reply')
     new_user = conversation.messages.create!(role: 'user', content: 'new')
-    allow(OpenaiService).to receive(:completion).and_return(content: 'summary')
+    allow(openai).to receive(:completion).and_return(content: 'summary')
 
-    expect(described_class.perform(conversation)).to be true
+    expect(described_class.perform(conversation, openai)).to be true
 
     expect(system_message.reload.compacted_at).to be_nil
     expect(old_user.reload.compacted_at).to be_present
@@ -32,10 +33,10 @@ RSpec.describe ConversationCompactionService do
 
   it 'returns false when there is nothing to compact' do
     conversation.messages.create!(role: 'user', content: 'only')
-    allow(OpenaiService).to receive(:completion)
+    allow(openai).to receive(:completion)
 
-    expect(described_class.perform(conversation)).to be false
-    expect(OpenaiService).not_to have_received(:completion)
+    expect(described_class.perform(conversation, openai)).to be false
+    expect(openai).not_to have_received(:completion)
     expect(conversation.messages.where(role: 'compaction')).to be_empty
   end
 
@@ -43,9 +44,9 @@ RSpec.describe ConversationCompactionService do
     conversation.messages.create!(role: 'user', content: 'old')
     conversation.messages.create!(role: 'assistant', content: 'old reply')
     conversation.messages.create!(role: 'user', content: 'new')
-    allow(OpenaiService).to receive(:completion).and_return(content: '')
+    allow(openai).to receive(:completion).and_return(content: '')
 
-    expect { described_class.perform(conversation) }.to raise_error(RuntimeError, 'Compaction summary is empty')
+    expect { described_class.perform(conversation, openai) }.to raise_error(RuntimeError, 'Compaction summary is empty')
     expect(conversation.messages.where(role: 'compaction')).to be_empty
   end
 
@@ -56,12 +57,12 @@ RSpec.describe ConversationCompactionService do
     conversation.messages.create!(role: 'user', content: 'new')
 
     prompts = []
-    allow(OpenaiService).to receive(:completion) do |prompt, _model, _conversation_id, **_options|
+    allow(openai).to receive(:completion) do |prompt, _model, **_options|
       prompts << prompt
       { content: 'summary' }
     end
 
-    expect(described_class.perform(conversation)).to be true
+    expect(described_class.perform(conversation, openai)).to be true
 
     expect(prompts.size).to eq(1)
     expect(prompts.first.map { |entry| entry[:content] }.join).to include('InSense 1620 EUR, 4.8 stars')
@@ -74,12 +75,12 @@ RSpec.describe ConversationCompactionService do
     conversation.messages.create!(role: 'user', content: 'new')
 
     prompts = []
-    allow(OpenaiService).to receive(:completion) do |prompt, _model, _conversation_id, **_options|
+    allow(openai).to receive(:completion) do |prompt, _model, **_options|
       prompts << prompt
       { content: 'summary' }
     end
 
-    described_class.perform(conversation)
+    described_class.perform(conversation, openai)
 
     instruction = prompts.first.first[:content]
     expect(instruction).to include('STRICT DATA PRESERVATION RULES')

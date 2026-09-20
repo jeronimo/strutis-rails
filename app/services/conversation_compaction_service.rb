@@ -2,12 +2,13 @@ class ConversationCompactionService
   CHARS_PER_TOKEN = 4
   TEMPLATE_TOKENS_PER_MESSAGE = 8
 
-  def self.perform(conversation)
-    new(conversation).perform
+  def self.perform(conversation, openai)
+    new(conversation, openai).perform
   end
 
-  def initialize(conversation)
+  def initialize(conversation, openai)
     @conversation = conversation
+    @openai = openai
   end
 
   def perform
@@ -48,7 +49,7 @@ class ConversationCompactionService
     prompt = [ { role: 'system', content: instruction } ]
     prompt.concat(messages.map { |message| summary_entry(message) })
     prompt << { role: 'user', content: 'Provide the continuation summary now.' }
-    OpenaiService.completion(prompt, @conversation.model, @conversation.public_id)[:content]
+    @openai.completion(prompt, @conversation.model)[:content]
   end
 
   def summary_entry(message)

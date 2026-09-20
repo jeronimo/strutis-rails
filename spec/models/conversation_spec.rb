@@ -4,6 +4,16 @@ RSpec.describe Conversation, type: :model do
   let(:user) { User.create!(email: 'conversation-user@example.com', password: 'password123') }
   let(:conversation) { user.conversations.create!(model: 'test-model') }
 
+  describe '#openai_service' do
+    it 'builds a service with the conversation and user public ids' do
+      service = conversation.openai_service
+
+      expect(service).to be_a(OpenaiService)
+      expect(service.instance_variable_get(:@conversation_id)).to eq(conversation.public_id)
+      expect(service.instance_variable_get(:@user_public_id)).to eq(user.public_id)
+    end
+  end
+
   describe '#context_usage_percent' do
     it 'returns nil without a context window' do
       allow(OpenaiService).to receive(:context_length).with('test-model').and_return(nil)

@@ -5,7 +5,7 @@ class ConversationCompactionJob < ApplicationJob
 
     compacted = false
     begin
-      compacted = ConversationCompactionService.perform(@conversation)
+      compacted = ConversationCompactionService.perform(@conversation, @conversation.openai_service)
     rescue StandardError => e
       Sentry.capture_exception(e)
       Rails.logger.error { "[ConversationCompactionJob] #{e.class}: #{e.message}" }

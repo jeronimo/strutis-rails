@@ -29,6 +29,7 @@ group :development, :test do
   gem 'rspec-rails'
   gem 'haml-lint'
   gem 'pry'
+  gem 'webmock', require: false
 end
 
 group :development do

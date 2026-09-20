@@ -1,10 +1,11 @@
 class ConversationTitleService
-  def self.perform(conversation)
-    new(conversation).perform
+  def self.perform(conversation, openai)
+    new(conversation, openai).perform
   end
 
-  def initialize(conversation)
+  def initialize(conversation, openai)
     @conversation = conversation
+    @openai = openai
   end
 
   def perform
@@ -23,7 +24,7 @@ class ConversationTitleService
       { role: 'system', content: title_prompt },
       { role: 'user', content: conversation }
     ]
-    OpenaiService.completion(prompt, @conversation.model, @conversation.public_id)[:content].to_s.strip.presence
+    @openai.completion(prompt, @conversation.model)[:content].to_s.strip.presence
   end
 
   def title_prompt

@@ -21,6 +21,10 @@ class Conversation < ApplicationRecord
     update_columns(deleted_at: nil)
   end
 
+  def openai_service
+    OpenaiService.new(conversation_id: public_id, user_public_id: user.public_id)
+  end
+
   def context_window
     OpenaiService.context_length(model)
   end
