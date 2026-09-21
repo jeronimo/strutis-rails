@@ -49,12 +49,31 @@ class Message < ApplicationRecord
     entry
   end
 
+  def prompt_entries(image_input: false)
+    return [ to_prompt_entry ] unless role == 'user' && image_input && image_attachments.any?
+
+    text = prompt_content(exclude_images: true)
+    image_attachments.map.with_index do |attachment, index|
+      parts = index.zero? && text.present? ? [ { type: 'text', text: text } ] : []
+      parts << { type: 'image_url', image_url: { url: attachment.blob.url(expires_in: 1.hour) } }
+      { role: 'user', content: parts }
+    end
+  end
+
   private
 
-  def prompt_content
-    return content if attachments.empty?
-    files = attachments.map { |attachment| "- #{attachment.filename}: #{attachment.blob.url(expires_in: 1.hour)}" }
-    "#{content}\n#{files.join("\n")}"
+  def image_attachments
+    attachments.select { |attachment| image_attachment?(attachment) }
+  end
+
+  def image_attachment?(attachment)
+    attachment.blob.content_type.to_s.start_with?('image/')
+  end
+
+  def prompt_content(exclude_images: false)
+    files = exclude_images ? attachments.reject { |attachment| image_attachment?(attachment) } : attachments
+    return content if files.empty?
+    "#{content}\n#{files.map { |attachment| "- #{attachment.filename}: #{attachment.blob.url(expires_in: 1.hour)}" }.join("\n")}"
   end
 
   def reset_conversation_tool_call_cache

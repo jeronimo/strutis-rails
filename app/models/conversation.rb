@@ -48,8 +48,12 @@ class Conversation < ApplicationRecord
 
   def prompt_token_estimate
     entries = prompt_messages
-    content_chars = entries.sum { |entry| entry[:content].to_s.length }
+    content_chars = entries.sum { |entry| entry_content_chars(entry[:content]) }
     (content_chars / ConversationCompactionService::CHARS_PER_TOKEN.to_f).ceil + entries.size * ConversationCompactionService::TEMPLATE_TOKENS_PER_MESSAGE
+  end
+
+  def entry_content_chars(content)
+    content.is_a?(Array) ? content.sum { |part| part[:text].to_s.length } : content.to_s.length
   end
 
   def compactable?
@@ -74,10 +78,11 @@ class Conversation < ApplicationRecord
 
   def prompt_messages
     active = messages.where(compacted_at: nil).where.not(role: 'compaction').where(queued: false).to_a
+    image_input = OpenaiService.supports_image_input?(model)
     entries = active.select { |message| message.role == 'system' }.map(&:to_prompt_entry)
     digest = compaction_digest if summary.present?
     entries << { role: 'user', content: digest } if digest.present?
-    entries.concat(active.reject { |message| message.role == 'system' }.map(&:to_prompt_entry))
+    entries.concat(active.reject { |message| message.role == 'system' }.flat_map { |message| message.prompt_entries(image_input: image_input) })
     entries
   end
 

@@ -37,7 +37,7 @@ class ConversationCompactionService
 
   def record_context_tokens
     entries = @conversation.prompt_messages
-    content_chars = entries.sum { |entry| entry[:content].to_s.length }
+    content_chars = entries.sum { |entry| @conversation.entry_content_chars(entry[:content]) }
     tokens = (content_chars / CHARS_PER_TOKEN.to_f).ceil + entries.size * TEMPLATE_TOKENS_PER_MESSAGE
     @conversation.update_column(:context_tokens, tokens)
   end

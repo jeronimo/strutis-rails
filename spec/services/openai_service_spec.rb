@@ -179,5 +179,13 @@ RSpec.describe OpenaiService do
       expect(described_class.chat_template_kwargs('m1')).to eq({ enable_thinking: true })
       expect(described_class.context_length('missing')).to be_nil
     end
+
+    it 'reports image input support from model capabilities' do
+      stub_request(:get, 'http://localhost:8080/v1/models').to_return(status: 200, body: '{"data":[{"id":"m1","capabilities":{"input":["text","image"]}},{"id":"m2","capabilities":{"input":["text"]}}]}')
+
+      expect(described_class.supports_image_input?('m1')).to be true
+      expect(described_class.supports_image_input?('m2')).to be false
+      expect(described_class.supports_image_input?('missing')).to be false
+    end
   end
 end

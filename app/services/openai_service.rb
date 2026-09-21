@@ -53,6 +53,10 @@ class OpenaiService
     model(model_id)&.dig(:chat_template_kwargs)
   end
 
+  def self.supports_image_input?(model_id)
+    model(model_id)&.dig(:capabilities, :input)&.include?('image') || false
+  end
+
   def initialize(conversation_id: nil, user_public_id: nil)
     @conversation_id = conversation_id
     @user_public_id = user_public_id

@@ -7,6 +7,7 @@ RSpec.describe ConversationCompactionService do
 
   before do
     Prompt.create!(key: 'compacting', user_id: nil, content: Prompt::COMPACTING_DEFAULT)
+    allow(OpenaiService).to receive(:supports_image_input?).and_return(false)
   end
 
   it 'compacts old non-system messages and keeps system messages and the latest user turn' do

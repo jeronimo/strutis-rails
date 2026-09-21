@@ -48,9 +48,10 @@ class ConversationCompletionJob < ApplicationJob
     return unless queued.exists?
 
     queued.find_each do |msg|
+      blobs = msg.attachments.map(&:blob)
       content, model = msg.content, msg.model
       msg.destroy!
-      @conversation.messages.create!(role: 'user', content: content, model: model)
+      @conversation.messages.create!(role: 'user', content: content, model: model).attachments.attach(blobs)
     end
     broadcast_frame(show_progress: true)
     self.class.perform_later(@conversation.id)

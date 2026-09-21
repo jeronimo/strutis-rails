@@ -81,6 +81,8 @@ RSpec.describe Conversation, type: :model do
   describe '#prompt_messages' do
     before do
       Prompt.create!(key: 'digest', user_id: nil, content: Prompt::DIGEST_DEFAULT)
+      allow(OpenaiService).to receive(:supports_image_input?).with('test-model').and_return(false)
+      ActiveStorage::Current.url_options = { host: 'test.host' }
     end
 
     it 'keeps system messages first, wraps the summary in a compaction marker, and excludes compacted and compaction messages' do
@@ -99,6 +101,48 @@ RSpec.describe Conversation, type: :model do
       expect(entries[1][:content]).to include('summary')
       expect(entries[1][:content]).to include('lossy')
       expect(entries[2]).to eq({ role: 'user', content: 'new' })
+    end
+
+    it 'sends one image_url entry per image with the text only on the first entry for image-capable models' do
+      allow(OpenaiService).to receive(:supports_image_input?).with('test-model').and_return(true)
+      message = conversation.messages.create!(role: 'user', content: 'describe these')
+      first = ActiveStorage::Blob.create_and_upload!(io: StringIO.new('img1'), filename: 'one.png', content_type: 'image/png')
+      second = ActiveStorage::Blob.create_and_upload!(io: StringIO.new('img2'), filename: 'two.png', content_type: 'image/png')
+      message.attachments.attach([ first, second ])
+
+      entries = conversation.prompt_messages
+      expect(entries.size).to eq(2)
+      expect(entries[0][:content].map { |part| part[:type] }).to eq([ 'text', 'image_url' ])
+      expect(entries[0][:content][0][:text]).to eq('describe these')
+      expect(entries[0][:content][1][:image_url][:url]).to end_with('/one.png')
+      expect(entries[1][:content].map { |part| part[:type] }).to eq([ 'image_url' ])
+      expect(entries[1][:content][0][:image_url][:url]).to end_with('/two.png')
+    end
+
+    it 'keeps non-image attachments as text lines alongside image_url entries' do
+      allow(OpenaiService).to receive(:supports_image_input?).with('test-model').and_return(true)
+      message = conversation.messages.create!(role: 'user', content: 'check both')
+      image = ActiveStorage::Blob.create_and_upload!(io: StringIO.new('img'), filename: 'one.png', content_type: 'image/png')
+      doc = ActiveStorage::Blob.create_and_upload!(io: StringIO.new('pdf'), filename: 'doc.pdf', content_type: 'application/pdf')
+      message.attachments.attach([ image, doc ])
+
+      entries = conversation.prompt_messages
+      expect(entries.size).to eq(1)
+      expect(entries[0][:content].first[:text]).to include('doc.pdf')
+      expect(entries[0][:content].last[:type]).to eq('image_url')
+      expect(entries[0][:content].last[:image_url][:url]).to end_with('/one.png')
+    end
+
+    it 'keeps image attachments as text url lines for models without image input' do
+      allow(OpenaiService).to receive(:supports_image_input?).with('test-model').and_return(false)
+      message = conversation.messages.create!(role: 'user', content: 'describe these')
+      image = ActiveStorage::Blob.create_and_upload!(io: StringIO.new('img'), filename: 'one.png', content_type: 'image/png')
+      message.attachments.attach(image)
+
+      entries = conversation.prompt_messages
+      expect(entries.size).to eq(1)
+      expect(entries[0][:content]).to be_a(String)
+      expect(entries[0][:content]).to include('one.png')
     end
   end
 
