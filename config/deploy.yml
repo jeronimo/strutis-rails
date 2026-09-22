@@ -64,6 +64,19 @@ ssh:
 
 # Use accessory services (secrets come from .kamal/secrets).
 accessories:
+  cdn:
+    image: nginx:stable-alpine
+    host: 178.104.155.110
+    files:
+      - config/cdn/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    proxy:
+      hosts:
+        - cdn.strutis.ai
+      ssl: true
+      healthcheck:
+        path: /cdn-health
+      buffering:
+        responses: false
   db:
     image: postgres:17
     host: 178.104.155.110

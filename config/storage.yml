@@ -3,7 +3,7 @@ test:
   root: <%= Rails.root.join("tmp/storage") %>
 
 vaults3:
-  service: S3
+  service: VaultS3
   access_key_id: <%= Rails.application.credentials.dig(:vaults3, Rails.env, :access_key_id) %>
   secret_access_key: <%= Rails.application.credentials.dig(:vaults3, Rails.env, :secret_access_key) %>
   bucket: <%= Rails.application.credentials.dig(:vaults3, Rails.env, :bucket) %>
