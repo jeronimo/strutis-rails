@@ -80,5 +80,5 @@ Rails.application.configure do
 
   # Enable DNS rebinding protection and other `Host` header attacks.
   # Only strutis.ai reaches here — CanonicalHostRedirect middleware redirects everything else first.
-  config.hosts = [ 'strutis.ai' ]
+  config.hosts = [ 'strutis.ai', ENV.fetch('FILES_HOST') ]
 end

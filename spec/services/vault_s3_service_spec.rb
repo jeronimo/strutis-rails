@@ -16,8 +16,10 @@ RSpec.describe ActiveStorage::Service::VaultS3Service do
     expect(url('abc123/file.png')).to include('X-Amz-Signature=')
   end
 
-  it 'returns the cdn url in production' do
+  it 'returns the files url in production' do
     allow(Rails.env).to receive(:production?).and_return(true)
-    expect(url('abc123/file.png')).to eq('https://cdn.strutis.ai/abc123/file.png')
+    allow(ENV).to receive(:fetch).and_call_original
+    allow(ENV).to receive(:fetch).with('FILES_HOST').and_return('files.strutis.ai')
+    expect(url('abc123/file.png')).to eq('https://files.strutis.ai/abc123/file.png')
   end
 end

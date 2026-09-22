@@ -34,6 +34,7 @@ env:
     # When you start using multiple servers, you should split out job processing to a dedicated machine.
     SOLID_QUEUE_IN_PUMA: true
     DB_HOST: strutis_rails-db
+    FILES_HOST: "files.strutis.ai"
 
 # Aliases are triggered with "bin/kamal <alias>". You can overwrite arguments on invocation:
 # "bin/kamal logs -r job" will tail logs from the first server in the job section.
@@ -64,17 +65,17 @@ ssh:
 
 # Use accessory services (secrets come from .kamal/secrets).
 accessories:
-  cdn:
+  files:
     image: nginx:stable-alpine
     host: 178.104.155.110
     files:
-      - config/cdn/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - config/files/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     proxy:
       hosts:
-        - cdn.strutis.ai
+        - files.strutis.ai
       ssl: true
       healthcheck:
-        path: /cdn-health
+        path: /files-health
       buffering:
         responses: false
   db:
