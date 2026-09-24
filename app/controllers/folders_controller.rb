@@ -29,8 +29,8 @@ class FoldersController < ApplicationController
   def move
     folder = current_user.folders.find(params[:id])
     parent_id = move_params[:parent_id].presence
-    if parent_id.present? && current_user.folders.find(parent_id).ancestor_of?(folder)
-      head :unprocessable_entity
+    if parent_id.present? && folder.ancestor_of?(current_user.folders.find(parent_id))
+      head :unprocessable_content
       return
     end
     move_tree_item(folder, attribute: :parent_id, parent_id: parent_id, prev: find_tree_item(move_params[:prev_type], move_params[:prev_id]), following: find_tree_item(move_params[:next_type], move_params[:next_id]))
