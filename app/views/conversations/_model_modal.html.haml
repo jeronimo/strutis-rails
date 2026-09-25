@@ -1,0 +1,30 @@
+.modal.fade#model-modal{ data: { conversation_target: 'modelModal', bs_backdrop: 'static' } }
+  .modal-dialog
+    .modal-content
+      .modal-header
+        %h5.modal-title Model
+        %button.btn-close{ type: 'button', data: { bs_dismiss: 'modal' }, 'aria-label': 'Close' }
+      .modal-body
+        .list-group.mb-3{ data: { conversation_target: 'modelList' } }
+          - models.each do |display_name, model_id|
+            .list-group-item.d-flex.align-items-center.gap-2
+              = radio_button_tag 'model', model_id, model_id == model[:id], class: 'form-check-input',
+                data: { conversation_target: 'modelOption', action: 'change->conversation#modelOptionChanged' }
+              %label.form-check-label= display_name
+        .form-check.form-switch.mb-2{ data: { conversation_target: 'thinking' } }
+          = check_box_tag 'thinking_modal', '1', model[:thinking], class: 'form-check-input',
+            data: { conversation_target: 'thinkingOption', action: 'change->conversation#thinkingOptionChanged' }
+          %label.form-check-label Thinking
+        - if model[:reasoning_effort_options].any?
+          .mb-2{ data: { conversation_target: 'reasoningEffort' } }
+            %label.form-label.d-block.mb-1 Reasoning effort
+            = select_tag 'reasoning_effort_modal', options_for_select(model[:reasoning_effort_options], model[:reasoning_effort]),
+              class: 'form-select', data: { conversation_target: 'reasoningEffortOption', action: 'change->conversation#reasoningEffortOptionChanged' }
+        - else
+          .mb-2.d-none{ data: { conversation_target: 'reasoningEffort' } }
+            %label.form-label.d-block.mb-1 Reasoning effort
+            = select_tag 'reasoning_effort_modal', class: 'form-select',
+              data: { conversation_target: 'reasoningEffortOption', action: 'change->conversation#reasoningEffortOptionChanged' }
+      .modal-footer
+        %button.btn.btn-secondary{ type: 'button', data: { bs_dismiss: 'modal' } } Cancel
+        %button.btn.btn-primary{ type: 'button', data: { action: 'click->conversation#saveModelModal', bs_dismiss: 'modal' } } Save

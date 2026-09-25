@@ -57,6 +57,18 @@ class OpenaiService
     model(model_id)&.dig(:capabilities, :input)&.include?('image') || false
   end
 
+  def self.supports_text_input?(model_id)
+    model(model_id)&.dig(:capabilities, :input)&.include?('text') || false
+  end
+
+  def self.supports_stt?(model_id)
+    model(model_id)&.dig(:capabilities, :input)&.include?('audio') || false
+  end
+
+  def self.stt_model
+    models.find { |model| supports_stt?(model[:id]) }
+  end
+
   def initialize(conversation_id: nil, user_public_id: nil)
     @conversation_id = conversation_id
     @user_public_id = user_public_id
@@ -64,6 +76,21 @@ class OpenaiService
 
   def tools
     request('GET', '/v1/tools', nil)[:data] || []
+  end
+
+  def transcribe(audio_file, model)
+    uri = URI("http://#{self.class.host}:#{self.class.port}/v1/audio/transcriptions")
+    http, request = build_multipart_request(uri, model, audio_file)
+    log_request(request, uri, model)
+
+    response = http.request(request)
+    log_response(response)
+
+    unless response.is_a?(Net::HTTPSuccess)
+      raise Error, "OpenAI API error: #{response.code} #{response.message}: #{error_detail(response)}"
+    end
+
+    JSON.parse(response.body, symbolize_names: true)[:text].to_s
   end
 
   def completion(messages, model, tools: nil, chat_template_kwargs: nil, should_stop: nil)
@@ -210,6 +237,29 @@ class OpenaiService
     request['Content-Type'] = 'application/json'
     request['X-Conversation-Id'] = @conversation_id if @conversation_id
     request['X-User-Public-Id'] = user_public_id_header if @user_public_id
+    [ http, request ]
+  end
+
+  def build_multipart_request(uri, model, audio_file)
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.open_timeout = self.class.open_timeout
+    http.read_timeout = self.class.read_timeout
+
+    audio_file.tempfile.rewind
+    file_content = audio_file.tempfile.read
+    boundary = SecureRandom.hex(16)
+
+    body = +"--#{boundary}\r\n".b
+    body << "Content-Disposition: form-data; name=\"model\"\r\nContent-Type: text/plain\r\n\r\n#{model}\r\n".b
+    body << "--#{boundary}\r\n".b
+    body << "Content-Disposition: form-data; name=\"file\"; filename=\"#{audio_file.original_filename}\"\r\nContent-Type: #{audio_file.content_type}\r\n\r\n".b
+    body << file_content.b
+    body << "\r\n--#{boundary}--\r\n".b
+
+    request = Net::HTTP::Post.new(uri)
+    request['Authorization'] = "Bearer #{self.class.key}"
+    request['Content-Type'] = "multipart/form-data; boundary=#{boundary}"
+    request.body = body
     [ http, request ]
   end
 

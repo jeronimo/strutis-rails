@@ -49,6 +49,10 @@ class Message < ApplicationRecord
     entry
   end
 
+  def audio_attachment?(attachment)
+    attachment.blob.content_type.to_s.start_with?('audio/')
+  end
+
   def prompt_entries(image_input: false)
     return [ to_prompt_entry ] unless role == 'user' && image_input && image_attachments.any?
 
@@ -58,6 +62,10 @@ class Message < ApplicationRecord
       parts << { type: 'image_url', image_url: { url: attachment.blob.url(expires_in: 1.hour) } }
       { role: 'user', content: parts }
     end
+  end
+
+  def audio_attachment?(attachment)
+    attachment.blob.content_type.to_s.start_with?('audio/')
   end
 
   private
@@ -73,7 +81,10 @@ class Message < ApplicationRecord
   def prompt_content(exclude_images: false)
     files = exclude_images ? attachments.reject { |attachment| image_attachment?(attachment) } : attachments
     return content if files.empty?
-    "#{content}\n#{files.map { |attachment| "- #{attachment.filename}: #{attachment.blob.url(expires_in: 1.hour)}" }.join("\n")}"
+    lines = files.map do |attachment|
+      audio_attachment?(attachment) ? '[transcribed from audio]' : "- #{attachment.filename}: #{attachment.blob.url(expires_in: 1.hour)}"
+    end
+    "#{content}\n#{lines.join("\n")}"
   end
 
   def reset_conversation_tool_call_cache

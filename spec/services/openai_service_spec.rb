@@ -187,5 +187,50 @@ RSpec.describe OpenaiService do
       expect(described_class.supports_image_input?('m2')).to be false
       expect(described_class.supports_image_input?('missing')).to be false
     end
+
+    it 'reports text and audio input support from model capabilities' do
+      stub_request(:get, 'http://localhost:8080/v1/models').to_return(status: 200, body: '{"data":[{"id":"m1","capabilities":{"input":["text","image"]}},{"id":"m2","capabilities":{"input":["audio"]}}]}')
+
+      expect(described_class.supports_text_input?('m1')).to be true
+      expect(described_class.supports_text_input?('m2')).to be false
+      expect(described_class.supports_stt?('m1')).to be false
+      expect(described_class.supports_stt?('m2')).to be true
+    end
+
+    it 'finds the stt model by audio input capability' do
+      stub_request(:get, 'http://localhost:8080/v1/models').to_return(status: 200, body: '{"data":[{"id":"m1","capabilities":{"input":["text"]}},{"id":"m2","capabilities":{"input":["audio"]}}]}')
+
+      expect(described_class.stt_model[:id]).to eq('m2')
+    end
+  end
+
+  describe '#transcribe' do
+    def audio_file
+      tempfile = Tempfile.new('recording')
+      tempfile.write('audio-bytes')
+      tempfile.rewind
+      ActionDispatch::Http::UploadedFile.new(tempfile: tempfile, filename: 'recording.webm', content_type: 'audio/webm')
+    end
+
+    it 'sends multipart/form-data with file and model fields' do
+      stub_request(:post, 'http://localhost:8080/v1/audio/transcriptions').to_return(status: 200, body: '{"text":"hello world"}')
+
+      expect(described_class.new.transcribe(audio_file, 'stt-model')).to eq('hello world')
+
+      expect(a_request(:post, 'http://localhost:8080/v1/audio/transcriptions') do |req|
+        req.headers['Content-Type'].start_with?('multipart/form-data; boundary=') &&
+          req.body.include?('name="model"') &&
+          req.body.include?('stt-model') &&
+          req.body.include?('name="file"; filename="recording.webm"') &&
+          req.body.include?('Content-Type: audio/webm') &&
+          req.body.include?('audio-bytes')
+      end).to have_been_made
+    end
+
+    it 'raises an error on a non-success response' do
+      stub_request(:post, 'http://localhost:8080/v1/audio/transcriptions').to_return(status: 500, body: '{"error":{"message":"boom"}}')
+
+      expect { described_class.new.transcribe(audio_file, 'stt-model') }.to raise_error(OpenaiService::Error, /boom/)
+    end
   end
 end

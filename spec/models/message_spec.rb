@@ -44,7 +44,9 @@ RSpec.describe Message, type: :model do
       message = conversation.messages.create!(role: 'assistant', content: 'reply')
       message.attachments.attach(upload('one.png', 'image/png'))
 
-      expect(message.prompt_entries(image_input: true)).to eq([ message.to_prompt_entry ])
+      travel_to Time.utc(2026, 1, 1) do
+        expect(message.prompt_entries(image_input: true)).to eq([ message.to_prompt_entry ])
+      end
     end
   end
 end

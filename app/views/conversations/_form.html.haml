@@ -1,12 +1,18 @@
-.chat-conversation.flex-fill.min-h-0{ class: shared ? 'shared' : nil, data: { controller: 'conversation', conversation_public_id: conversation&.public_id } }
+.chat-conversation.flex-fill.min-h-0{ class: shared ? 'shared' : nil, data: { controller: 'conversation', conversation_public_id: conversation&.public_id,
+  conversation_models: model[:metadata].to_json, conversation_context_tokens: context[:tokens], conversation_compact_threshold: context[:compact_threshold],
+  conversation_transcribe_path: transcribe_conversations_path } }
   .container.chat-window.d-flex.flex-column
     .chat-scroll.flex-fill.overflow-y-auto.min-h-0{ data: { conversation_target: 'scroll' } }
       .pe-2#conversation-messages
         - if conversation
-          = render 'conversations/messages_container', conversation: conversation, messages: conversation.messages
+          = render 'conversations/messages_container', conversation:, messages: conversation.messages
         - else
           = turbo_frame_tag 'messages', data: { conversation_target: 'messages' }
     .flex-shrink-0#conversation-error
+    .chat-progress.d-none.mb-2{ data: { conversation_target: 'transcribeProgress' } }
+      .d-flex.align-items-center.gap-2
+        .progress.flex-grow-1
+          .progress-bar.w-50
     = form_with url: conversations_path, method: :post, multipart: true, html: { id: 'conversation-form', class: shared ? 'flex-shrink-0 d-none' : 'flex-shrink-0' },
       data: { conversation_target: 'form', action: 'turbo:submit-start->conversation#disableForm turbo:submit-end->conversation#handleSubmitEnd' } do
       = render 'conversations/conversation_hidden_fields', conversation: conversation
@@ -21,19 +27,28 @@
           class: 'conversation-textarea', id: 'conversation-textarea',
           'data-conversation-target': 'textarea', 'data-action': 'keydown->conversation#handleKeyDown'
         .d-flex.align-items-center.gap-2.mt-2
-          = select_tag :model, options_for_select(models, current_model), class: 'form-select flex-grow-1', required: true,
-            data: { conversation_target: 'modelSelect', conversation_models: model_metadata.to_json,
-              conversation_context_tokens: (conversation&.context_tokens || 0), conversation_compact_threshold: Conversation::COMPACT_THRESHOLD,
-              action: 'change->conversation#modelChanged' }
-          .form-check.form-switch.form-check-reverse.mb-0{ class: thinking_visible ? nil : 'd-none', data: { conversation_target: 'thinking' } }
-            = check_box_tag :thinking, '1', current_thinking, id: 'thinking-toggle', class: 'form-check-input'
-            %label.form-check-label{ for: 'thinking-toggle' } Thinking
-          = select_tag :reasoning_effort, options_for_select(reasoning_effort_options.map { |effort| [ effort, effort ] }, current_reasoning_effort),
-            class: reasoning_visible ? 'form-select w-auto' : 'form-select w-auto d-none', 'aria-label': 'Reasoning effort',
-            data: { conversation_target: 'reasoningEffort' }
-          %label.btn.btn-outline-secondary{ for: 'conversation-attachments', 'aria-label': 'Attach files', title: 'Attach files' }
+          - if model[:stt_available]
+            %button.btn.btn-outline-secondary.chat-icon-btn{ type: 'button', 'aria-label': 'Record message', title: 'Record message',
+              data: { conversation_target: 'mic', action: 'click->conversation#toggleRecording' } }
+              = render 'icons/microphone'
+          %label.btn.btn-outline-secondary.chat-icon-btn{ for: 'conversation-attachments', 'aria-label': 'Attach files', title: 'Attach files',
+            data: { conversation_target: 'paperclip' } }
             = render 'icons/paperclip'
           = file_field_tag 'attachments[]', multiple: true, class: 'visually-hidden', id: 'conversation-attachments',
             data: { conversation_target: 'attachments', action: 'change->conversation#handleAttachmentsChange' }
+          .chat-context-usage.small.text-muted.font-monospace{ data: { conversation_target: 'contextUsage' } }
+            %span{ data: { conversation_target: 'contextTokens' } }= number_with_delimiter(context[:tokens])
+            %span /
+            %span{ data: { conversation_target: 'contextWindow' } }= number_with_delimiter(context[:window])
+            %span{ data: { conversation_target: 'contextPercent' } }= context[:percent_display]
+          .flex-grow-1
+          %button.btn.btn-outline-secondary.chat-model-btn{ type: 'button', 'aria-label': 'Select model',
+            data: { conversation_target: 'modelButton', action: 'click->conversation#openModelModal' } }
+            %span.chat-model-name.text-truncate{ data: { conversation_target: 'modelName' } }= model[:current_name]
+            = render 'icons/chevron_down'
           = button_tag type: 'submit', class: 'btn btn-primary chat-send-btn', 'data-conversation-target': 'submit', 'aria-label': 'Send message' do
             = render 'icons/send'
+      = hidden_field_tag :model, model[:id], data: { conversation_target: 'modelHidden' }
+      = hidden_field_tag :thinking, model[:thinking] ? '1' : nil, data: { conversation_target: 'thinkingHidden' }
+      = hidden_field_tag :reasoning_effort, model[:reasoning_effort], data: { conversation_target: 'reasoningEffortHidden' }
+    = render 'conversations/model_modal', models:, model:

@@ -4,5 +4,6 @@
   - if show_progress
     = render 'conversations/progress', conversation: conversation
   = render 'conversations/context_usage', conversation: conversation
+  %span.d-none{ data: { context_tokens: conversation.context_tokens } }
   - if conversation.last_error.present?
     = render 'conversations/error', error: conversation.last_error

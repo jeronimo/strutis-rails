@@ -39,6 +39,7 @@ Rails.application.routes.draw do
   resources :conversations, only: [ :index, :new, :create, :show, :update, :destroy ] do
     post 'stop', on: :member
     patch 'move', on: :member
+    post 'transcribe', on: :collection
   end
 
   resources :folders, only: [ :create, :update, :destroy ] do

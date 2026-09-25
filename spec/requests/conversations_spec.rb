@@ -28,4 +28,25 @@ RSpec.describe 'Conversations', type: :request do
       expect(conversation.messages.where(role: 'system').pluck(:content)).to eq([ 'my rules' ])
     end
   end
+
+  describe 'POST /conversations/transcribe' do
+    it 'returns the transcription text' do
+      allow(OpenaiService).to receive(:stt_model).and_return({ id: 'stt-model' })
+      service_instance = instance_double(OpenaiService, transcribe: 'hello world')
+      allow(OpenaiService).to receive(:new).and_return(service_instance)
+
+      post '/conversations/transcribe', params: { file: fixture_file_upload('audio.webm', 'audio/webm') }
+
+      expect(response).to have_http_status(:ok)
+      expect(response.parsed_body).to eq({ 'text' => 'hello world' })
+    end
+
+    it 'requires an audio file' do
+      allow(OpenaiService).to receive(:stt_model).and_return({ id: 'stt-model' })
+
+      post '/conversations/transcribe'
+
+      expect(response).to have_http_status(:unprocessable_content)
+    end
+  end
 end

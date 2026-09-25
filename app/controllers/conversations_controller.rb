@@ -2,10 +2,11 @@ class ConversationsController < ApplicationController
   layout 'user'
   include ConversationTree
   before_action :authenticate_user!, except: :show
-  before_action :load_conversations
+  before_action :load_conversations, except: :transcribe
 
   def new
     @conversation = nil
+    @shared = false
     @folder_id = valid_folder_id(params[:folder_id])
     setup_conversation_model
   end
@@ -54,6 +55,22 @@ class ConversationsController < ApplicationController
     Sentry.capture_exception(e)
     Rails.logger.error { "[ConversationsController#create] #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
     render_conversation_error('Something went wrong. Please try again.', :internal_server_error)
+  end
+
+  def transcribe
+    audio_file = params[:file]
+    stt_model = OpenaiService.stt_model
+    if audio_file.blank? || stt_model.blank?
+      render json: { error: 'Audio file is required.' }, status: :unprocessable_content
+      return
+    end
+
+    text = OpenaiService.new.transcribe(audio_file, stt_model[:id])
+    render json: { text: text }
+  rescue OpenaiService::Error => e
+    Sentry.capture_exception(e)
+    Rails.logger.error { "[ConversationsController#transcribe] #{e.class}: #{e.message}" }
+    render json: { error: e.message }, status: :bad_gateway
   end
 
   def stop
@@ -173,15 +190,21 @@ class ConversationsController < ApplicationController
     render turbo_stream: turbo_stream.replace('conversation-error', partial: 'conversations/error', locals: { error: error }), status: status
   end
 
+  def chat_models
+    OpenaiService.models.select { |model| OpenaiService.supports_text_input?(model[:id]) }
+  end
+
   def available_models
-    OpenaiService.models.map { |model| [ model[:display_name].presence || model[:id], model[:id] ] }
+    chat_models.map { |model| [ model[:display_name].presence || model[:id], model[:id] ] }
   end
 
   def model_metadata
-    OpenaiService.models.each_with_object({}) do |model, metadata|
+    chat_models.each_with_object({}) do |model, metadata|
       kwargs = model[:chat_template_kwargs] || {}
       metadata[model[:id]] = {
+        display_name: model[:display_name].presence || model[:id],
         context_length: model[:context_length],
+        supports_image_input: OpenaiService.supports_image_input?(model[:id]),
         supports_thinking: kwargs.key?(:enable_thinking),
         default_thinking: kwargs[:enable_thinking] || false,
         reasoning_effort_options: Array(kwargs[:reasoning_effort_options]),
@@ -192,14 +215,24 @@ class ConversationsController < ApplicationController
 
   def setup_conversation_model
     @models = available_models
-    @model_metadata = model_metadata
-    @current_model = current_model
-    meta = @model_metadata[@current_model]
-    @current_thinking = @conversation ? @conversation.thinking : meta&.fetch(:default_thinking, false)
-    @current_reasoning_effort = @conversation ? (@conversation.reasoning_effort || meta&.dig(:default_reasoning_effort)) : meta&.dig(:default_reasoning_effort)
-    @reasoning_effort_options = meta&.fetch(:reasoning_effort_options, []) || []
-    @thinking_visible = meta&.fetch(:supports_thinking, false)
-    @reasoning_visible = meta&.fetch(:reasoning_effort_options, []).present?
+    current = current_model
+    metadata = model_metadata
+    @model = {
+      id: current,
+      metadata:,
+      current_name: metadata[current]&.dig(:display_name) || current,
+      thinking: @conversation ? @conversation.thinking : metadata[current]&.fetch(:default_thinking, false),
+      reasoning_effort: @conversation ? (@conversation.reasoning_effort || metadata[current]&.dig(:default_reasoning_effort)) : metadata[current]&.dig(:default_reasoning_effort),
+      reasoning_effort_options: metadata[current]&.fetch(:reasoning_effort_options, []) || [],
+      stt_available: OpenaiService.stt_model.present?
+    }
+    @context = {
+      tokens: @conversation&.context_tokens || 0,
+      window: metadata[current]&.dig(:context_length) || 0,
+      percent: @conversation&.context_usage_percent || 0,
+      percent_display: format('%d%%', @conversation&.context_usage_percent || 0),
+      compact_threshold: Conversation::COMPACT_THRESHOLD
+    }
   end
 
   def current_model
