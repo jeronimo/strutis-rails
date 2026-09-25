@@ -235,8 +235,8 @@ class OpenaiService
 
     request['Authorization'] = "Bearer #{self.class.key}"
     request['Content-Type'] = 'application/json'
-    request['X-Conversation-Id'] = @conversation_id if @conversation_id
-    request['X-User-Public-Id'] = user_public_id_header if @user_public_id
+    request['X-Conversation-Id'] = @conversation_id
+    request['X-User-Public-Id'] = user_public_id_header
     [ http, request ]
   end
 
@@ -259,6 +259,8 @@ class OpenaiService
     request = Net::HTTP::Post.new(uri)
     request['Authorization'] = "Bearer #{self.class.key}"
     request['Content-Type'] = "multipart/form-data; boundary=#{boundary}"
+    request['X-Conversation-Id'] = @conversation_id
+    request['X-User-Public-Id'] = user_public_id_header
     request.body = body
     [ http, request ]
   end

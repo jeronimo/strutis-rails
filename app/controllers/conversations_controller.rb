@@ -65,7 +65,8 @@ class ConversationsController < ApplicationController
       return
     end
 
-    text = OpenaiService.new.transcribe(audio_file, stt_model[:id])
+    conversation = find_or_create_conversation(params[:conversation_public_id].presence, 'Voice message', params[:model])
+    text = OpenaiService.new(conversation_id: conversation.public_id, user_public_id: current_user.public_id).transcribe(audio_file, stt_model[:id])
     render json: { text: text }
   rescue OpenaiService::Error => e
     Sentry.capture_exception(e)

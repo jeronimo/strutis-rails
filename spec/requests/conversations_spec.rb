@@ -35,7 +35,7 @@ RSpec.describe 'Conversations', type: :request do
       service_instance = instance_double(OpenaiService, transcribe: 'hello world')
       allow(OpenaiService).to receive(:new).and_return(service_instance)
 
-      post '/conversations/transcribe', params: { file: fixture_file_upload('audio.webm', 'audio/webm') }
+      post '/conversations/transcribe', params: { file: fixture_file_upload('audio.webm', 'audio/webm'), model: 'test-model' }
 
       expect(response).to have_http_status(:ok)
       expect(response.parsed_body).to eq({ 'text' => 'hello world' })

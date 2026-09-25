@@ -185,7 +185,7 @@ export default class extends Controller {
 
   async transcribeAndSubmit(blob) {
     const token = document.querySelector('meta[name="csrf-token"]')?.content
-    const transcribeFormData = new FormData()
+    const transcribeFormData = new FormData(this.formTarget)
     transcribeFormData.append('file', blob, 'recording.webm')
     const response = await fetch(this.element.dataset.conversationTranscribePath, {
       method: 'POST',
