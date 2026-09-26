@@ -1,5 +1,5 @@
 %h2.text-center.mb-2 Verify it's you
-%p.text-center.text-muted.mb-4= t('two_factor.code_sent', email: @pending_user.email)
+%p.text-center.text-muted.mb-4= t('two_factor.code_sent', email: @sign_in_user.email)
 
 = form_with url: user_sign_in_verify_path, method: :post, data: { turbo: false } do
   .mb-3

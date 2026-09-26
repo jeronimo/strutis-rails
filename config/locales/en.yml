@@ -35,3 +35,4 @@ en:
     code_sent: "We sent a 6-digit code to %{email}. Enter it below to finish signing in."
     invalid_code: "Invalid or expired code. Check the code and try again."
     resend: "Resend code"
+    sign_in_required: "Please sign in to verify your identity."
