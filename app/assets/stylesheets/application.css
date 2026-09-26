@@ -219,6 +219,16 @@
   white-space: nowrap;
 }
 
+.chat-model-popup {
+  width: 18rem;
+  z-index: 1050;
+}
+
+.chat-recording-timer {
+  min-width: 2rem;
+  text-align: right;
+}
+
 .chat-audio audio {
   width: 100%;
   max-width: 240px;

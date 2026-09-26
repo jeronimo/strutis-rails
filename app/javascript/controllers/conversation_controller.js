@@ -4,11 +4,12 @@ import { subscribeConversation } from "controllers/conversation_stream"
 export default class extends Controller {
   static targets = [
     "textarea", "form", "path", "messages", "submit", "scroll",
-    "modelButton", "modelModal", "modelList", "modelName", "modelHidden",
+    "modelButton", "modelPopup", "modelList", "modelName", "modelHidden",
     "thinking", "reasoningEffort", "thinkingHidden", "reasoningEffortHidden",
     "contextWarning", "attachments", "mic", "paperclip",
-    "contextUsage", "contextTokens", "contextWindow", "contextPercent",
-    "transcribeProgress"
+    "contextUsage", "contextPercent",
+    "popupContextTokens", "popupContextWindow", "popupContextPercent",
+    "recordingTimer", "transcribeProgress"
   ]
 
   connect() {
@@ -22,6 +23,12 @@ export default class extends Controller {
     this.currentModel = this.modelHiddenTarget.value
     this.mediaRecorder = null
     this.audioChunks = []
+    this.recordingSeconds = 0
+    this.recordingInterval = null
+    this._onOutsideClick = (event) => this.checkOutsideClick(event)
+    this._onEscape = (event) => this.checkEscape(event)
+    document.addEventListener('click', this._onOutsideClick)
+    document.addEventListener('keydown', this._onEscape)
     this.mutationObserver = new MutationObserver((mutations) => this.handleMutation(mutations))
     this.mutationObserver.observe(this.element, { childList: true, subtree: true })
     requestAnimationFrame(() => this.scrollToLatest())
@@ -29,6 +36,9 @@ export default class extends Controller {
 
   disconnect() {
     this.mutationObserver.disconnect()
+    document.removeEventListener('click', this._onOutsideClick)
+    document.removeEventListener('keydown', this._onEscape)
+    this.stopRecordingTimer()
   }
 
   subscribe() {
@@ -57,17 +67,38 @@ export default class extends Controller {
     if (event.detail.success) {
       this.textareaTarget.value = ''
       if (this.hasAttachmentsTarget) this.attachmentsTarget.value = ''
+      this.contextWarningTarget.classList.add('d-none')
+      document.getElementById('conversation-error')?.replaceChildren()
     }
   }
 
-  openModelModal() {
-    this.syncModalToCurrentModel()
-    bootstrap.Modal.getOrCreateInstance(this.modelModalTarget).show()
+  toggleModelPopup() {
+    const isHidden = this.modelPopupTarget.classList.contains('d-none')
+    if (isHidden) {
+      this.syncPopupToCurrentModel()
+      this.modelPopupTarget.classList.remove('d-none')
+    } else {
+      this.closeModelPopup()
+    }
   }
 
-  saveModelModal() {}
+  closeModelPopup() {
+    this.modelPopupTarget.classList.add('d-none')
+  }
 
-  syncModalToCurrentModel() {
+  checkOutsideClick(event) {
+    if (!this.modelPopupTarget.classList.contains('d-none') && !this.modelPopupTarget.contains(event.target) && !this.modelButtonTarget.contains(event.target)) {
+      this.closeModelPopup()
+    }
+  }
+
+  checkEscape(event) {
+    if (event.key === 'Escape' && !this.modelPopupTarget.classList.contains('d-none')) {
+      this.closeModelPopup()
+    }
+  }
+
+  syncPopupToCurrentModel() {
     const option = this.modelListTarget.querySelector(`input[value="${this.currentModel}"]`)
     if (option) option.checked = true
     this.applyModelOptions(this.currentModel)
@@ -152,9 +183,11 @@ export default class extends Controller {
     if (!this.hasContextUsageTarget) return
     const metadata = this.models[this.currentModel]
     const window = metadata?.context_length || 0
-    this.contextTokensTarget.textContent = this.contextTokens.toLocaleString()
-    this.contextWindowTarget.textContent = window.toLocaleString()
-    this.contextPercentTarget.textContent = window > 0 ? `${Math.round(this.contextTokens / window * 100)}%` : ''
+    const percent = window > 0 ? `${Math.round(this.contextTokens / window * 100)}%` : ''
+    this.contextPercentTarget.textContent = percent
+    this.popupContextTokensTarget.textContent = this.contextTokens.toLocaleString()
+    this.popupContextWindowTarget.textContent = window.toLocaleString()
+    this.popupContextPercentTarget.textContent = percent
   }
 
   async toggleRecording() {
@@ -170,12 +203,44 @@ export default class extends Controller {
       this.mediaRecorder.onstop = () => this.handleRecordingStop()
       this.mediaRecorder.start()
       this.micTarget.classList.add('recording')
+      this.startRecordingTimer()
+      this.contextWarningTarget.classList.add('d-none')
     } catch (error) {
       console.error('[conversation] recording failed', error)
+      this.showRecordingWarning()
     }
   }
 
+  showRecordingWarning() {
+    const warning = this.contextWarningTarget
+    warning.querySelector('.context-warning-message').textContent =
+      'Microphone not available. Check your device permissions.'
+    warning.querySelector('button').classList.add('d-none')
+    warning.classList.remove('d-none')
+  }
+
+  startRecordingTimer() {
+    this.recordingSeconds = 0
+    this.recordingTimerTarget.classList.remove('d-none')
+    this.recordingTimerTarget.textContent = '0:00'
+    this.recordingInterval = setInterval(() => {
+      this.recordingSeconds++
+      const min = Math.floor(this.recordingSeconds / 60)
+      const sec = String(this.recordingSeconds % 60).padStart(2, '0')
+      this.recordingTimerTarget.textContent = `${min}:${sec}`
+    }, 1000)
+  }
+
+  stopRecordingTimer() {
+    if (this.recordingInterval) {
+      clearInterval(this.recordingInterval)
+      this.recordingInterval = null
+    }
+    this.recordingTimerTarget.classList.add('d-none')
+  }
+
   handleRecordingStop() {
+    this.stopRecordingTimer()
     this.mediaRecorder.stream.getTracks().forEach((track) => track.stop())
     this.micTarget.classList.remove('recording')
     this.transcribeProgressTarget.classList.remove('d-none')
