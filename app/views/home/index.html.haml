@@ -3,13 +3,12 @@
   = image_tag 'logo.webp', alt: 'Strutis', class: 'logo-half mt-5'
   #latency-data{ 'data-latency-target' => 'label' } Loading...
 
-  .row.justify-content-center.mt-3
-    .col-12.col-md-6
-      %button.btn.btn-primary.w-100.m-2{ 'data-action' => 'click->latency#toggleAuthForm', 'data-latency-target' => 'testBtn' } I have invitation
+  .mt-3
+    %button.btn.btn-primary.w-100{ 'data-action' => 'click->latency#toggleAuthForm', 'data-latency-target' => 'testBtn' } I have invitation
 
-      = turbo_frame_tag 'auth_form', class: 'd-none', data: { latency_target: 'authFormContainer' } do
-        = render 'users/devise/sessions/token_form'
-        = link_to 'Sign in with email', user_email_sign_in_path, class: 'd-block text-center mt-2', data: { turbo: false }
+    = turbo_frame_tag 'auth_form', class: 'd-none', data: { latency_target: 'authFormContainer' } do
+      = render 'users/devise/sessions/token_form'
+      = link_to 'Sign in with email', user_email_sign_in_path, class: 'd-block text-center mt-2', data: { turbo: false }
 
-      .mt-3
-        = render 'icons/eu_ai_label'
+    .mt-3
+      = render 'icons/eu_ai_label'

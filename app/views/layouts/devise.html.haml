@@ -14,8 +14,6 @@
     = isolated_importmap_tags 'application'
 
   %body.d-flex.align-items-start.mt-3
-    .container
-      .row.justify-content-center
-        .col-md-6.col-lg-4
-          = render_flash :user
-          = yield
+    .container.app-container
+      = render_flash :user
+      = yield
