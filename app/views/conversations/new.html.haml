@@ -1,8 +1,7 @@
 .new-conversation-layout.d-flex.flex-column
-  .container
-    .system-prompt-section.border.rounded.p-3.mb-3.flex-shrink-0.overflow-auto{ id: 'system-prompt-section' }
-      .d-flex.align-items-center.justify-content-between.mb-2
-        %strong.text-muted System prompt
-        = link_to 'Edit', edit_users_prompt_path, class: 'btn btn-sm btn-link text-decoration-none'
-      .small.text-muted.style-whitespace-pre-wrap= current_user.effective_prompt('system')
+  .system-prompt-section.border.rounded.p-3.mb-3.flex-shrink-0.overflow-auto{ id: 'system-prompt-section' }
+    .d-flex.align-items-center.justify-content-between.mb-2
+      %strong.text-muted System prompt
+      = link_to 'Edit', edit_users_prompt_path, class: 'btn btn-sm btn-link text-decoration-none'
+    .small.text-muted.style-whitespace-pre-wrap= current_user.effective_prompt('system')
   = render 'conversations/form', conversation: @conversation, shared: @shared, folder_id: @folder_id, models: @models, model: @model, context: @context

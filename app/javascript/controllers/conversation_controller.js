@@ -31,14 +31,22 @@ export default class extends Controller {
     document.addEventListener('keydown', this._onEscape)
     this.mutationObserver = new MutationObserver((mutations) => this.handleMutation(mutations))
     this.mutationObserver.observe(this.element, { childList: true, subtree: true })
+    this.resizeObserver = new ResizeObserver(() => this.updateScrollPadding())
+    this.resizeObserver.observe(this.formTarget)
+    this.updateScrollPadding()
     requestAnimationFrame(() => this.scrollToLatest())
   }
 
   disconnect() {
     this.mutationObserver.disconnect()
+    this.resizeObserver.disconnect()
     document.removeEventListener('click', this._onOutsideClick)
     document.removeEventListener('keydown', this._onEscape)
     this.stopRecordingTimer()
+  }
+
+  updateScrollPadding() {
+    this.scrollTarget.style.paddingBottom = `${this.formTarget.offsetHeight}px`
   }
 
   subscribe() {
@@ -348,8 +356,6 @@ export default class extends Controller {
   }
 
   scrollToLatest() {
-    if (!this.hasScrollTarget) return
-    this.scrollTarget.scrollTop = this.scrollTarget.scrollHeight
-    this.formTarget.scrollIntoView({ block: 'end' })
+    window.scrollTo({ top: document.body.scrollHeight })
   }
 }

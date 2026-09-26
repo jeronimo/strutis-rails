@@ -23,7 +23,7 @@
     = stylesheet_link_tag 'application', 'data-turbo-track': 'reload'
     = isolated_importmap_tags 'application'
 
-  %body{ data: { controller: 'conversation-drawer' } }
+  %body.user-layout{ data: { controller: 'conversation-drawer' } }
     .conversation-drawer-backdrop{ data: { conversation_drawer_target: 'backdrop', action: 'conversation-drawer#close' } }
     .container-fluid
       .row
@@ -59,7 +59,7 @@
               %svg{ xmlns: 'http://www.w3.org/2000/svg', width: 16, height: 16, fill: 'currentColor', viewBox: '0 0 16 16', 'aria-hidden': true }
                 %path{ d: 'M2.5 12a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-5a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5m0-5a.5.5 0 0 1 .5-.5h10a.5.5 0 0 1 0 1H3a.5.5 0 0 1-.5-.5' }
             %span.conversation-drawer-title.flex-grow-1.text-truncate{ id: 'conversation-drawer-title' }= @conversation&.title.presence || 'New Conversation'
-          .container
+          .user-content
             = render_flash :user
-          .d-flex.flex-column.flex-fill
-            = yield
+            .d-flex.flex-column.flex-fill
+              = yield

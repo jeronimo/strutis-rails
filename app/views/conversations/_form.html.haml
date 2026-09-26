@@ -1,8 +1,8 @@
 .chat-conversation.flex-fill.min-h-0{ class: shared ? 'shared' : nil, data: { controller: 'conversation', conversation_public_id: conversation&.public_id,
   conversation_models: model[:metadata].to_json, conversation_context_tokens: context[:tokens], conversation_compact_threshold: context[:compact_threshold],
   conversation_transcribe_path: transcribe_conversations_path } }
-  .container.chat-window.d-flex.flex-column
-    .chat-scroll.flex-fill.overflow-y-auto.min-h-0{ data: { conversation_target: 'scroll' } }
+  .chat-window.d-flex.flex-column
+    .chat-scroll.flex-fill.min-h-0{ data: { conversation_target: 'scroll' } }
       .pe-2#conversation-messages
         - if conversation
           = render 'conversations/messages_container', conversation:, messages: conversation.messages

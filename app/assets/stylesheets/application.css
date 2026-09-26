@@ -141,6 +141,28 @@
   }
 }
 
+#conversation-form {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  background-color: var(--bs-body-bg);
+}
+
+#conversation-form .chat-input-card,
+#conversation-form .alert {
+  max-width: 1080px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+@media (min-width: 768px) {
+  #conversation-form {
+    left: 25%;
+  }
+}
+
 .chat-input-card {
   border: 1px solid var(--bs-border-color);
   border-radius: 1rem;
@@ -234,9 +256,7 @@
   max-width: 240px;
 }
 
-.chat-window {
-  height: calc(100vh - 2rem);
-}
+
 
 @media (max-width: 767.98px) {
   .chat-window {
@@ -262,21 +282,19 @@
   overflow: visible;
 }
 
-.new-conversation-layout {
-  height: calc(100vh - 2rem);
-}
+
 
 .new-conversation-layout .system-prompt-section {
   max-height: 12rem;
 }
 
-.new-conversation-layout .chat-window {
-  height: 100%;
-}
+
 
 .conversation-drawer-header {
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: 1020;
   display: flex;
   align-items: center;
@@ -284,6 +302,12 @@
 
   background-color: var(--bs-body-bg);
   border-bottom: 1px solid var(--bs-border-color);
+}
+
+@media (max-width: 767.98px) {
+  .user-content {
+    padding-top: 3rem;
+  }
 }
 
 .conversation-drawer-title {
@@ -459,4 +483,14 @@ input[readonly]:focus {
 
 .app-container {
   max-width: 540px;
+}
+
+html:has(.user-layout) {
+  scrollbar-gutter: stable;
+}
+
+.user-content {
+  max-width: 1080px;
+  margin: 0 auto;
+  width: 100%;
 }
