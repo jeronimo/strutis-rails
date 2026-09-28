@@ -107,11 +107,11 @@ class OpenaiService
     stopped = false
     begin
       stream_request('/v1/chat/completions', body, timing, usage, should_stop) do |delta|
-        if delta[:content].present?
+        if delta[:content] && !delta[:content].empty?
           content << delta[:content]
           yield delta[:content] if block_given?
         end
-        reasoning << delta[:reasoning] if delta[:reasoning].present?
+        reasoning << delta[:reasoning] if delta[:reasoning] && !delta[:reasoning].empty?
         accumulate_tool_calls(tool_calls, delta[:tool_calls])
       end
     rescue StoppedError

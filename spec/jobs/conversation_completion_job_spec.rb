@@ -115,4 +115,61 @@ RSpec.describe ConversationCompletionJob, type: :job do
 
     expect(conversation.reload.context_tokens).to eq(50)
   end
+
+  context 'with real SSE streaming (no completion stub)' do
+    before do
+      allow(OpenaiService).to receive(:credentials).and_return({ host: 'localhost', port: 8080, key: 'test-key', open_timeout: 5, read_timeout: 30 })
+      OpenaiService.instance_variable_set(:@models, nil)
+      OpenaiService.instance_variable_set(:@models_fetched_at, nil)
+      allow_any_instance_of(OpenaiService).to receive(:tools).and_return([])
+      allow_any_instance_of(OpenaiService).to receive(:completion).and_call_original
+      conversation.update!(context_tokens: 0)
+      conversation.messages.create!(role: 'user', content: 'what model?')
+    end
+
+    def sse(*events)
+      events.map { |event| event == '[DONE]' ? 'data: [DONE]' : "data: #{event.to_json}" }.join("\n\n") + "\n\n"
+    end
+
+    it 'stores whitespace-intact content in the DB when deltas split at word boundaries' do
+      stub_request(:post, 'http://localhost:8080/v1/chat/completions')
+        .to_return(status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: sse(
+          { choices: [ { delta: { content: 'Meta' } } ] },
+          { choices: [ { delta: { content: ' Llama ' } } ] },
+          { choices: [ { delta: { content: '3.' } } ], usage: { prompt_tokens: 10, completion_tokens: 5 } },
+          '[DONE]'
+        ))
+
+      described_class.perform_now(conversation.id)
+
+      msg = conversation.messages.reload.where(role: 'assistant').last
+      expect(msg.content).to eq('Meta Llama 3.')
+    end
+
+    it 'stores newlines and bullet markers intact in the DB' do
+      stub_request(:post, 'http://localhost:8080/v1/chat/completions')
+        .to_return(status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: sse(
+          { choices: [ { delta: { content: "Llama 4 is a 10M parameter model with 16 experts\n" } } ] },
+          { choices: [ { delta: { content: "* Mixture of Experts\n" } } ] },
+          { choices: [ { delta: { content: "\n* Strong tool-calling\n\nIt works" } } ], usage: { prompt_tokens: 10, completion_tokens: 20 } },
+          '[DONE]'
+        ))
+
+      described_class.perform_now(conversation.id)
+
+      msg = conversation.messages.reload.where(role: 'assistant').last
+      expect(msg.content).to eq("Llama 4 is a 10M parameter model with 16 experts\n* Mixture of Experts\n\n* Strong tool-calling\n\nIt works")
+    end
+
+    it 'stores content correctly when raw SSE uses CRLF and no space after data colon' do
+      raw = "data:{\"choices\":[{\"delta\":{\"content\":\"a \"}}]}\r\n\r\ndata:{\"choices\":[{\"delta\":{\"content\":\"10M\"}}]}\r\n\r\ndata:[DONE]\r\n\r\n"
+      stub_request(:post, 'http://localhost:8080/v1/chat/completions')
+        .to_return(status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: raw)
+
+      described_class.perform_now(conversation.id)
+
+      msg = conversation.messages.reload.where(role: 'assistant').last
+      expect(msg.content).to eq('a 10M')
+    end
+  end
 end

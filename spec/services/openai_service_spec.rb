@@ -119,6 +119,71 @@ RSpec.describe OpenaiService do
       expect(result[:stopped]).to be false
     end
 
+    it 'preserves whitespace when deltas are split at word boundaries' do
+      stub_request(:post, 'http://localhost:8080/v1/chat/completions')
+        .to_return(status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: sse(
+          { choices: [ { delta: { content: 'Llama ' } } ] },
+          { choices: [ { delta: { content: '4' } } ] },
+          { choices: [ { delta: { content: ' has ' } } ] },
+          { choices: [ { delta: { content: '16' } } ] },
+          '[DONE]'
+        ))
+
+      result = described_class.new.completion([ { role: 'user', content: 'hi' } ], 'test-model')
+
+      expect(result[:content]).to eq('Llama 4 has 16')
+    end
+
+    it 'preserves space sent as a separate delta token' do
+      stub_request(:post, 'http://localhost:8080/v1/chat/completions')
+        .to_return(status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: sse(
+          { choices: [ { delta: { content: 'Llama' } } ] },
+          { choices: [ { delta: { content: ' ' } } ] },
+          { choices: [ { delta: { content: '4' } } ] },
+          { choices: [ { delta: { content: ' Scout' } } ] },
+          '[DONE]'
+        ))
+
+      result = described_class.new.completion([ { role: 'user', content: 'hi' } ], 'test-model')
+
+      expect(result[:content]).to eq('Llama 4 Scout')
+    end
+
+    it 'preserves newlines and bullet markers in streamed content' do
+      stub_request(:post, 'http://localhost:8080/v1/chat/completions')
+        .to_return(status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: sse(
+          { choices: [ { delta: { content: "experts\n" } } ] },
+          { choices: [ { delta: { content: "* Mixture" } } ] },
+          { choices: [ { delta: { content: "\n\ntool-calling\n\n" } } ] },
+          { choices: [ { delta: { content: 'It works' } } ] },
+          '[DONE]'
+        ))
+
+      result = described_class.new.completion([ { role: 'user', content: 'hi' } ], 'test-model')
+
+      expect(result[:content]).to eq("experts\n* Mixture\n\ntool-calling\n\nIt works")
+    end
+
+    it 'preserves whitespace in raw SSE stream with CRLF line endings' do
+      raw_sse = "data: {\"choices\":[{\"delta\":{\"content\":\"Meta\"}}]}\r\n\r\ndata: {\"choices\":[{\"delta\":{\"content\":\" Llama \"}}]}\r\n\r\ndata: {\"choices\":[{\"delta\":{\"content\":\"3.\"}}]}\r\n\r\ndata: [DONE]\r\n\r\n"
+      stub_request(:post, 'http://localhost:8080/v1/chat/completions')
+        .to_return(status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: raw_sse)
+
+      result = described_class.new.completion([ { role: 'user', content: 'hi' } ], 'test-model')
+
+      expect(result[:content]).to eq('Meta Llama 3.')
+    end
+
+    it 'preserves whitespace when SSE data has no space after colon' do
+      raw_sse = "data:{\"choices\":[{\"delta\":{\"content\":\"a \"}}]}\n\ndata:{\"choices\":[{\"delta\":{\"content\":\"10M\"}}]}\n\ndata:[DONE]\n\n"
+      stub_request(:post, 'http://localhost:8080/v1/chat/completions')
+        .to_return(status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: raw_sse)
+
+      result = described_class.new.completion([ { role: 'user', content: 'hi' } ], 'test-model')
+
+      expect(result[:content]).to eq('a 10M')
+    end
+
     it 'accumulates streamed tool call fragments' do
       stub_request(:post, 'http://localhost:8080/v1/chat/completions')
         .to_return(status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: sse(
