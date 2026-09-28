@@ -23,11 +23,11 @@
           = button_tag type: 'button', class: 'btn btn-sm btn-outline-primary', data: { action: 'conversation#compact' } do
             Compact
       .chat-input-card.mb-2
-        = text_area_tag :message, '', rows: 1, placeholder: 'Enter your message...',
-          class: 'conversation-textarea', id: 'conversation-textarea',
+        = text_area_tag :message, '', rows: 3, placeholder: 'Enter your message...',
+          class: 'form-control conversation-textarea', id: 'conversation-textarea',
           'data-conversation-target': 'textarea', 'data-action': 'keydown->conversation#handleKeyDown'
         .d-flex.align-items-center.gap-2.mt-2
-          .position-relative
+          .position-relative.min-w-0
             %button.btn.btn-outline-secondary.chat-model-btn{ type: 'button', 'aria-label': 'Select model',
               data: { conversation_target: 'modelButton', action: 'click->conversation#toggleModelPopup' } }
               %span.chat-model-name.text-truncate{ data: { conversation_target: 'modelName' } }= model[:current_name]
@@ -36,18 +36,19 @@
           .chat-context-usage.small.text-muted.font-monospace{ data: { conversation_target: 'contextUsage' } }
             %span{ data: { conversation_target: 'contextPercent' } }= context[:percent_display]
           .flex-grow-1
-          %label.btn.btn-outline-secondary.chat-icon-btn{ for: 'conversation-attachments', 'aria-label': 'Attach files', title: 'Attach files',
-            data: { conversation_target: 'paperclip' } }
-            = render 'icons/paperclip'
-          = file_field_tag 'attachments[]', multiple: true, class: 'visually-hidden', id: 'conversation-attachments',
-            data: { conversation_target: 'attachments', action: 'change->conversation#handleAttachmentsChange' }
-          - if model[:stt_available]
-            %span.chat-recording-timer.small.text-muted.font-monospace.d-none{ data: { conversation_target: 'recordingTimer' } }
-            %button.btn.btn-outline-secondary.chat-icon-btn{ type: 'button', 'aria-label': 'Record message', title: 'Record message',
-              data: { conversation_target: 'mic', action: 'click->conversation#toggleRecording' } }
-              = render 'icons/microphone'
-          = button_tag type: 'submit', class: 'btn btn-primary chat-send-btn', 'data-conversation-target': 'submit', 'aria-label': 'Send message' do
-            = render 'icons/send'
+          .d-flex.align-items-center.gap-2.chat-action-buttons
+            %label.btn.btn-outline-secondary.chat-icon-btn{ for: 'conversation-attachments', 'aria-label': 'Attach files', title: 'Attach files',
+              data: { conversation_target: 'paperclip' } }
+              = render 'icons/paperclip'
+            = file_field_tag 'attachments[]', multiple: true, class: 'visually-hidden', id: 'conversation-attachments',
+              data: { conversation_target: 'attachments', action: 'change->conversation#handleAttachmentsChange' }
+            - if model[:stt_available]
+              %span.chat-recording-timer.small.text-muted.font-monospace.d-none{ data: { conversation_target: 'recordingTimer' } }
+              %button.btn.btn-outline-secondary.chat-icon-btn{ type: 'button', 'aria-label': 'Record message', title: 'Record message',
+                data: { conversation_target: 'mic', action: 'click->conversation#toggleRecording' } }
+                = render 'icons/microphone'
+            = button_tag type: 'submit', class: 'btn btn-primary chat-send-btn', 'data-conversation-target': 'submit', 'aria-label': 'Send message' do
+              = render 'icons/send'
       = hidden_field_tag :model, model[:id], data: { conversation_target: 'modelHidden' }
       = hidden_field_tag :thinking, model[:thinking] ? '1' : nil, data: { conversation_target: 'thinkingHidden' }
       = hidden_field_tag :reasoning_effort, model[:reasoning_effort], data: { conversation_target: 'reasoningEffortHidden' }

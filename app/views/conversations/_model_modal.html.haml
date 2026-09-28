@@ -1,28 +1,28 @@
 .chat-model-popup.d-none.position-absolute.bottom-100.start-0.mb-2{ data: { conversation_target: 'modelPopup' } }
   .card.shadow-sm
     .card-body
-      .list-group.mb-3{ data: { conversation_target: 'modelList' } }
+      .mb-3{ data: { conversation_target: 'modelList' } }
         - models.each do |display_name, model_id|
-          .list-group-item.d-flex.align-items-center.gap-2
+          %label.form-check.d-flex.align-items-center.gap-2.mb-2
             = radio_button_tag 'model', model_id, model_id == model[:id], class: 'form-check-input',
               data: { conversation_target: 'modelOption', action: 'change->conversation#modelOptionChanged' }
-            %label.form-check-label{ for: "model_#{model_id}" }= display_name
-      .form-check.form-switch.mb-3{ data: { conversation_target: 'thinking' } }
-        = check_box_tag 'thinking_modal', '1', model[:thinking], class: 'form-check-input',
-          data: { conversation_target: 'thinkingOption', action: 'change->conversation#thinkingOptionChanged' }
-        %label.form-check-label Thinking
-      - if model[:reasoning_effort_options].any?
-        .mb-3{ data: { conversation_target: 'reasoningEffort' } }
-          %label.form-label Reasoning effort
-          = select_tag 'reasoning_effort_modal', options_for_select(model[:reasoning_effort_options], model[:reasoning_effort]),
-            class: 'form-select', data: { conversation_target: 'reasoningEffortOption', action: 'change->conversation#reasoningEffortOptionChanged' }
-      - else
-        .mb-3.d-none{ data: { conversation_target: 'reasoningEffort' } }
-          %label.form-label Reasoning effort
-          = select_tag 'reasoning_effort_modal', class: 'form-select',
-            data: { conversation_target: 'reasoningEffortOption', action: 'change->conversation#reasoningEffortOptionChanged' }
+            %span.form-check-label.d-flex.align-items-center.gap-1
+              = display_name
+              - if model[:metadata][model_id][:supports_image_input]
+                %span.text-muted{ title: 'Supports image input' }
+                  = render 'icons/image'
+      .border-top.pt-3.mb-3.model-options-section
+        .d-flex.align-items-center.gap-3
+          .form-check.form-switch{ class: model[:supports_thinking] ? nil : 'd-none', data: { conversation_target: 'thinking' } }
+            = check_box_tag 'thinking_modal', '1', model[:thinking], class: 'form-check-input', id: 'thinking-modal',
+              data: { conversation_target: 'thinkingOption', action: 'change->conversation#thinkingOptionChanged' }
+            %label.text-muted.small{ for: 'thinking-modal' } Thinking
+          .d-flex.align-items-center.gap-2{ class: model[:reasoning_effort_options].any? ? nil : 'd-none', data: { conversation_target: 'reasoningEffort' } }
+            = select_tag 'reasoning_effort_modal', options_for_select(model[:reasoning_effort_options], model[:reasoning_effort]),
+              class: 'form-select form-select-sm', data: { conversation_target: 'reasoningEffortOption', action: 'change->conversation#reasoningEffortOptionChanged' }
+            %span.text-muted.small Reasoning
       .border-top.pt-3
-        .text-muted.d-flex.align-items-center
+        .text-muted.small.d-flex.align-items-center
           %span.me-2 Context
           %span.font-monospace{ data: { conversation_target: 'popupContextTokens' } }= number_with_delimiter(context[:tokens])
           %span.mx-1 /

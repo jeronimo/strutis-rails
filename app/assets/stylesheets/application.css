@@ -4,11 +4,7 @@
 }
 
 .conversation-textarea {
-  width: 100%;
-  max-width: 90%;
   resize: none;
-  min-height: 80px;
-  field-sizing: content;
 }
 
 .white-space-pre-wrap {
@@ -224,16 +220,30 @@
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  max-width: 12rem;
-  flex-shrink: 0;
+  width: 100%;
+  min-width: 0;
   padding: 0.25rem 0.5rem;
 }
 
+@media (min-width: 768px) {
+  .chat-model-btn {
+    min-width: 18rem;
+  }
+}
+
+.position-relative:has(.chat-model-btn) {
+  min-width: 0;
+}
+
 .chat-model-name {
-  max-width: 9rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.chat-model-btn svg {
+  margin-left: auto;
+  flex-shrink: 0;
 }
 
 .chat-context-usage {
@@ -242,8 +252,19 @@
 }
 
 .chat-model-popup {
-  width: 18rem;
+  width: 28rem;
   z-index: 1050;
+}
+
+.model-options-section {
+  min-height: 3rem;
+}
+
+
+
+.chat-action-buttons {
+  min-width: 10.25rem;
+  justify-content: flex-end;
 }
 
 .chat-recording-timer {
@@ -255,8 +276,6 @@
   width: 100%;
   max-width: 240px;
 }
-
-
 
 @media (max-width: 767.98px) {
   .chat-window {
@@ -282,13 +301,9 @@
   overflow: visible;
 }
 
-
-
 .new-conversation-layout .system-prompt-section {
   max-height: 12rem;
 }
-
-
 
 .conversation-drawer-header {
   position: fixed;

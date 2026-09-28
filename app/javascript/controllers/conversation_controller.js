@@ -140,23 +140,23 @@ export default class extends Controller {
   applyModelOptions(model) {
     const metadata = this.models[model]
     if (!metadata) return
-    const thinkingInput = this.thinkingTarget.querySelector('input')
     const supportsThinking = Boolean(metadata.supports_thinking)
     this.thinkingTarget.classList.toggle('d-none', !supportsThinking)
+    const thinkingInput = this.thinkingTarget.querySelector('input')
     thinkingInput.checked = supportsThinking ? Boolean(metadata.default_thinking) : false
     this.thinkingHiddenTarget.value = thinkingInput.checked ? '1' : ''
     const options = metadata.reasoning_effort_options || []
     this.reasoningEffortTarget.classList.toggle('d-none', options.length === 0)
     const select = this.reasoningEffortTarget.querySelector('select')
+    const current = select.value
+    select.innerHTML = ''
+    options.forEach((effort) => {
+      const option = document.createElement('option')
+      option.value = effort
+      option.textContent = effort
+      select.appendChild(option)
+    })
     if (options.length > 0) {
-      const current = select.value
-      select.innerHTML = ''
-      options.forEach((effort) => {
-        const option = document.createElement('option')
-        option.value = effort
-        option.textContent = effort
-        select.appendChild(option)
-      })
       const fallback = options.includes(metadata.default_reasoning_effort) ? metadata.default_reasoning_effort : options[0]
       select.value = options.includes(current) ? current : fallback
     } else {
