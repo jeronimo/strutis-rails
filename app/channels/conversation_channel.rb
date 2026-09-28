@@ -7,7 +7,7 @@ class ConversationChannel < ApplicationCable::Channel
     broadcast_replace_to conversation,
       target: "messages-#{conversation.public_id}",
       partial: 'conversations/messages_frame',
-      locals: { conversation:, messages: conversation.messages.includes(attachments: :blob).reload, show_progress: }
+      locals: { conversation:, messages: conversation.messages.includes(attachments_attachments: :blob).reload, show_progress: }
   end
 
   def self.broadcast_title(conversation)
