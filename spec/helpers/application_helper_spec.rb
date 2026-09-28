@@ -25,19 +25,14 @@ RSpec.describe ApplicationHelper do
   end
 
   describe '#render_message_markdown' do
-    it 'reproduces the stripped response (whitespace dropped around digits and list markers)' do
+    it 'preserves whitespace around digits and list markers' do
       html = render_message_markdown(original)
       text = html.gsub(/<[^>]+>/, '')
 
-      puts "=== HTML ==="
-      puts html
-      puts "=== TEXT (tags stripped) ==="
-      puts text
-
-      expect(text).to include('Llama4')
-      expect(text).to include('a10M')
-      expect(text).to include('with16')
-      expect(text).to include('*17')
+      expect(text).to include('Llama 4')
+      expect(text).to include('a 10M')
+      expect(text).to include('with 16')
+      expect(text).to include('17 billion')
     end
   end
 end
