@@ -28,8 +28,8 @@
     .container-fluid
       .row
         .col-md-3
-          %nav.navflex.flex-column.py-3.conversation-drawer{ data: { conversation_drawer_target: 'drawer' } }
-            %h5.text-muted.d-flex.align-items-center.gap-2.mb-3.ps-2
+          %nav.d-flex.flex-column.py-3.conversation-drawer{ data: { conversation_drawer_target: 'drawer' } }
+            %h5.text-muted.d-flex.align-items-center.gap-2.mb-2.ps-2
               = link_to root_path, class: 'd-flex align-items-center gap-2 text-decoration-none' do
                 = image_tag 'logo.webp', alt: 'Strutis', class: 'strutis-logo'
                 %span Strutis
@@ -46,7 +46,7 @@
                   = render 'icons/list'
                   View all
               = render 'folders/new_folder_modal'
-              .list-group.mt-2{ data: { turbo: false } }
+              .list-group.mt-auto{ data: { turbo: false } }
                 = link_to current_user.full_name.presence || current_user.email, edit_users_profile_path, class: 'list-group-item list-group-item-action'
                 = button_to 'Sign Out', destroy_user_session_path, method: :delete, class: 'btn btn-link p-0 w-100 text-start text-decoration-none', form: { class: 'list-group-item list-group-item-action' }
             - else
