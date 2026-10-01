@@ -10,7 +10,7 @@ class LatenciesController < ApplicationController
     if result[:latency_ms]
       render json: { latency: result[:latency_ms] }
     else
-      render json: { latency: nil, error: result[:error] || 'Health check failed' }, status: 500
+      render json: { latency: nil, error: 'Health check failed' }, status: 500
     end
   end
 
@@ -26,7 +26,7 @@ class LatenciesController < ApplicationController
       rescue StandardError => e
         Sentry.capture_exception(e)
         Rails.logger.error { "[LatenciesController] #{e.full_message}" }
-        { latency_ms: nil, error: e.message }
+        { latency_ms: nil }
       end
       Rails.cache.write(CACHE_KEY, result, expires_in: CACHE_TTL)
       result
