@@ -15,31 +15,20 @@ class Message < ApplicationRecord
 
   def display_content
     return content unless role == 'tool'
-    JSON.pretty_generate(JSON.parse(content))
-  rescue JSON::ParserError => e
-    Rails.logger.error { "[Message] Malformed tool JSON in message #{id}: #{e.message}" }
-    Sentry.capture_exception(e)
-    content
+    parsed = ensure_json
+    parsed.is_a?(String) ? parsed : JSON.pretty_generate(parsed)
   end
 
   def tool_summary
     return unless role == 'tool'
-    parsed = JSON.parse(content)
+    parsed = ensure_json
     parsed['filename'] || parsed['query'] || parsed['url'] if parsed.is_a?(Hash)
-  rescue JSON::ParserError => e
-    Rails.logger.error { "[Message] Malformed tool JSON in message #{id}: #{e.message}" }
-    Sentry.capture_exception(e)
-    nil
   end
 
   def truncated?
     return false unless role == 'tool'
-    parsed = JSON.parse(content)
+    parsed = ensure_json
     parsed.is_a?(Hash) && parsed['truncated'] == true
-  rescue JSON::ParserError => e
-    Rails.logger.error { "[Message] Malformed tool JSON in message #{id}: #{e.message}" }
-    Sentry.capture_exception(e)
-    false
   end
 
   def to_prompt_entry
@@ -69,6 +58,12 @@ class Message < ApplicationRecord
   end
 
   private
+
+  def ensure_json
+    stripped = content.to_s.strip
+    return JSON.parse(stripped) if stripped.start_with?('{', '[')
+    JSON.generate(stripped)
+  end
 
   def image_attachments
     attachments.select { |attachment| image_attachment?(attachment) }
