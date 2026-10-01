@@ -65,6 +65,10 @@ class OpenaiService
     model(model_id)&.dig(:capabilities, :input)&.include?('audio') || false
   end
 
+  def self.visible?(model_id)
+    model(model_id)&.dig(:visible) != false
+  end
+
   def self.stt_model
     models.find { |model| supports_stt?(model[:id]) }
   end

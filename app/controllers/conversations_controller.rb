@@ -192,7 +192,7 @@ class ConversationsController < ApplicationController
   end
 
   def chat_models
-    OpenaiService.models.select { |model| OpenaiService.supports_text_input?(model[:id]) }
+    OpenaiService.models.select { |model| OpenaiService.supports_text_input?(model[:id]) && OpenaiService.visible?(model[:id]) }
   end
 
   def available_models
