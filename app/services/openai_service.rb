@@ -45,6 +45,10 @@ class OpenaiService
     models.find { |model| model[:id] == model_id }
   end
 
+  def self.display_name(model_id)
+    model(model_id)&.dig(:display_name).presence || model_id
+  end
+
   def self.context_length(model_id)
     model(model_id)&.dig(:context_length)
   end

@@ -3,3 +3,5 @@
     = link_to 'Profile', edit_users_profile_path, class: "nav-link#{' active' if active_tab == 'profile' }"
   %li.nav-item
     = link_to 'System prompt', edit_users_prompt_path, class: "nav-link#{' active' if active_tab == 'prompt' }"
+  %li.nav-item
+    = link_to 'Usage', users_usage_path, class: "nav-link#{' active' if active_tab == 'usage' }"

@@ -1,0 +1,27 @@
+= render 'users/account_tabs', active_tab: 'usage'
+
+- if @usage.empty?
+  %p No usage yet.
+- else
+  %table.table.table-bordered
+    %thead
+      %tr
+        %th Model
+        %th Requests
+        %th Input
+        %th Output (Thinking)
+        %th Total
+    %tbody
+      - @usage.each do |row|
+        %tr
+          %td= row[:name]
+          %td= number_with_delimiter(row[:requests])
+          %td= number_with_delimiter(row[:input])
+          %td= output_with_thinking(row[:output], row[:thinking])
+          %td= number_with_delimiter(row[:total])
+      %tr
+        %td Total
+        %td= number_with_delimiter(@totals[:requests])
+        %td= number_with_delimiter(@totals[:input])
+        %td= output_with_thinking(@totals[:output], @totals[:thinking])
+        %td= number_with_delimiter(@totals[:total])

@@ -9,6 +9,7 @@ class User < ApplicationRecord
   has_many :conversations, dependent: :destroy
   has_many :folders, dependent: :destroy
   has_many :prompts, dependent: :destroy
+  has_many :messages, through: :conversations
 
   before_create { self.authentication_token = SecureRandom.hex(20) if authentication_token.blank? }
   before_create { self.public_id = SecureRandom.hex(16) }
@@ -27,6 +28,23 @@ class User < ApplicationRecord
 
   def effective_prompt(key)
     prompts.find_by(key: key)&.content || Prompt.global(key)
+  end
+
+  def usage_by_model
+    table = Message.arel_table
+    messages
+      .where.not(prompt_tokens: nil)
+      .reorder(nil)
+      .group(table[:model])
+      .select(
+        table[:model],
+        table[:id].count.as('requests'),
+        table[:prompt_tokens].sum.as('prompt_tokens'),
+        table[:completion_tokens].sum.as('completion_tokens'),
+        table[:reasoning_tokens].sum.as('reasoning_tokens'),
+        table[:created_at].maximum.as('last_used')
+      )
+      .order('last_used DESC')
   end
 
   def issue_two_factor_code!
