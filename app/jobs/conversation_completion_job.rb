@@ -1,6 +1,5 @@
 class ConversationCompletionJob < ApplicationJob
   STOP_REQUEST_EXPIRES_AFTER = 20.minutes
-  STOP_REQUEST_READ_EVERY = 2.seconds
   ALIVE_EXPIRES_AFTER = 30.seconds
   ALIVE_REWRITE_EVERY = 10.seconds
   MAX_TOOL_ROUNDS = 100
@@ -34,14 +33,16 @@ class ConversationCompletionJob < ApplicationJob
   def perform(conversation_id)
     self.class.rewrite_alive(conversation_id)
     @conversation = Conversation.find_by(id: conversation_id)
-    return unless @conversation
+    if @conversation.nil?
+      Rails.cache.delete(self.class.alive_key(conversation_id))
+      return
+    end
     @openai = @conversation.open_ai_service
 
     @finalized = false
     @failure = nil
     @stopped = false
     @stop_seen = false
-    @last_stop_read = 0.0
     @conversation.update_column(:last_error, nil)
     begin
       run_completion
@@ -51,13 +52,10 @@ class ConversationCompletionJob < ApplicationJob
       Rails.logger.error { "[ConversationCompletionJob] #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
     ensure
       finish_failed_turn
+      Rails.cache.delete(self.class.alive_key(conversation_id))
     end
-    if @finalized
-      drain_queued_messages
-      ConversationTitleJob.perform_later(@conversation.id) if @conversation.title_generation_needed?
-    end
-  ensure
-    Rails.cache.delete(self.class.alive_key(conversation_id))
+    drain_queued_messages
+    ConversationTitleJob.perform_later(@conversation.id) if @finalized && @conversation.title_generation_needed?
   end
 
   private
@@ -133,11 +131,7 @@ class ConversationCompletionJob < ApplicationJob
   end
 
   def stop_requested_now?
-    return true if @stop_seen
-    now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-    return false if now - @last_stop_read < STOP_REQUEST_READ_EVERY
-    @last_stop_read = now
-    @stop_seen = self.class.stop_requested?(@conversation.id)
+    @stop_seen ||= self.class.stop_requested?(@conversation.id)
   end
 
   def record_tool_turn(result, tools)
@@ -148,6 +142,7 @@ class ConversationCompletionJob < ApplicationJob
     end
     broadcast_frame(show_progress: true)
     result[:tool_calls].each do |tool_call|
+      break if stop_requested_now?
       start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       tool_result = @openai.execute_tool(tool_call, tools)
       tool_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round

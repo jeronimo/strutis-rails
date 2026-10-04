@@ -115,6 +115,46 @@ RSpec.describe ConversationCompletionJob, type: :job do
     expect(conversation.reload.last_error).to eq('Stopped by user.')
   end
 
+  it 'does not execute remaining tool calls after a stop' do
+    conversation.update!(context_tokens: 0)
+    conversation.messages.create!(role: 'user', content: 'new')
+    tool_calls = [
+      { id: 'call_1', type: 'function', function: { name: 'search', arguments: '{"query":"a"}' } },
+      { id: 'call_2', type: 'function', function: { name: 'search', arguments: '{"query":"b"}' } }
+    ]
+    calls = 0
+    allow_any_instance_of(OpenAiService).to receive(:completion) do |_instance, _messages, _model, **_options, &block|
+      calls += 1
+      if calls == 1
+        { content: '', tool_calls: tool_calls, latency_ms: 1, inference_ms: 1, prompt_tokens: 10, completion_tokens: 5, reasoning_tokens: 0 }
+      else
+        block&.call('done')
+        { content: 'done', tool_calls: [], latency_ms: 1, inference_ms: 1, prompt_tokens: 10, completion_tokens: 2, reasoning_tokens: 0 }
+      end
+    end
+    allow_any_instance_of(OpenAiService).to receive(:execute_tool) do |_instance, _tool_call, _tools|
+      described_class.request_stop(conversation.id)
+      '{"result":"ok"}'
+    end
+
+    described_class.perform_now(conversation.id)
+
+    expect(conversation.messages.where(role: 'tool', content: '{"result":"ok"}').count).to eq(1)
+    expect(conversation.reload.last_error).to eq('Stopped by user.')
+  end
+
+  it 'sends the queued message after the run is stopped' do
+    conversation.update!(context_tokens: 0)
+    conversation.messages.create!(role: 'user', content: 'new')
+    conversation.messages.create!(role: 'user', content: 'queued next', queued: true)
+    described_class.request_stop(conversation.id)
+
+    expect { described_class.perform_now(conversation.id) }.to have_enqueued_job(described_class).with(conversation.id)
+
+    expect(conversation.messages.reload.where(queued: true).count).to eq(0)
+    expect(conversation.messages.where(content: 'queued next', queued: false).count).to eq(1)
+  end
+
   it 'marks the conversation alive while running and unread after finishing' do
     conversation.update!(context_tokens: 0)
     conversation.messages.create!(role: 'user', content: 'new')

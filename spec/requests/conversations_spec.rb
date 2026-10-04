@@ -49,4 +49,15 @@ RSpec.describe 'Conversations', type: :request do
       expect(response).to have_http_status(:unprocessable_content)
     end
   end
+
+  describe 'POST /conversations/:id/stop' do
+    it 'records the stop request for the conversation found by public id' do
+      conversation = user.conversations.create!(model: 'test-model')
+
+      post "/conversations/#{conversation.public_id}/stop"
+
+      expect(response).to have_http_status(:ok)
+      expect(ConversationCompletionJob.stop_requested?(conversation.id)).to be true
+    end
+  end
 end

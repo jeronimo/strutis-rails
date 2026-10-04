@@ -15,6 +15,7 @@ class OpenAiClient
   STREAM_IDLE_TIMEOUT = 120.seconds
   STREAM_MAX_DURATION = 240.seconds
   TOOL_TIMEOUT = 120.seconds
+  STOP_WITHIN = 2.seconds
 
   class Error < StandardError
     attr_reader :status
@@ -132,17 +133,34 @@ class OpenAiClient
     log_request(request, uri, body)
 
     start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    watchdog = should_stop ? watch_stop(http, should_stop) : nil
 
-    http.request(request) do |response|
-      unless response.is_a?(Net::HTTPSuccess)
-        Rails.logger.error "[OpenAI] Error response body: #{response.body}"
-        raise_api_error(response)
+    begin
+      http.request(request) do |response|
+        unless response.is_a?(Net::HTTPSuccess)
+          Rails.logger.error "[OpenAI] Error response body: #{response.body}"
+          raise_api_error(response)
+        end
+
+        response.read_body do |chunk|
+          raise Stopped if should_stop&.call
+          raise Error, "OpenAI stream exceeded #{STREAM_MAX_DURATION}s maximum duration" if Process.clock_gettime(Process::CLOCK_MONOTONIC) - start > STREAM_MAX_DURATION
+          yield chunk
+        end
       end
+    rescue IOError, Errno::ECONNRESET, Errno::EPIPE
+      raise Stopped if should_stop&.call
+      raise
+    ensure
+      watchdog&.kill
+    end
+  end
 
-      response.read_body do |chunk|
-        raise Stopped if should_stop&.call
-        raise Error, "OpenAI stream exceeded #{STREAM_MAX_DURATION}s maximum duration" if Process.clock_gettime(Process::CLOCK_MONOTONIC) - start > STREAM_MAX_DURATION
-        yield chunk
+  def watch_stop(http, should_stop)
+    Thread.new do
+      loop do
+        sleep STOP_WITHIN
+        http.finish if should_stop.call
       end
     end
   end

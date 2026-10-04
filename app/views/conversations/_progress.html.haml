@@ -2,5 +2,5 @@
   .d-flex.align-items-center.gap-2
     .progress.flex-grow-1
       .progress-bar.w-50
-    %button.btn.btn-outline-danger.btn-sm{ type: 'button', 'data-turbo-method': :post, href: stop_conversation_path(conversation), onclick: 'this.disabled=true' }
+    %a.btn.btn-outline-danger.btn-sm{ href: stop_conversation_path(conversation.public_id), 'data-turbo-method': 'post' }
       Stop

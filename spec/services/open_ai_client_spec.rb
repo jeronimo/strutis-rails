@@ -80,5 +80,17 @@ RSpec.describe OpenAiClient do
 
       expect { described_class.new.post_stream('/v1/chat/completions', {}) { |chunk| } }.to raise_error(OpenAiClient::Error, /maximum duration/)
     end
+
+    it 'watchdog closes the connection once the stop request lands' do
+      stub_const('OpenAiClient::STOP_WITHIN', 0.01)
+      stopped = false
+      http = instance_double(Net::HTTP)
+      expect(http).to receive(:finish).at_least(:once)
+
+      thread = described_class.new.send(:watch_stop, http, -> { stopped })
+      stopped = true
+      sleep 0.1
+      thread.kill
+    end
   end
 end
