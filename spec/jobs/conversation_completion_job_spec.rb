@@ -52,6 +52,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
     described_class.perform_now(conversation.id)
 
     expect(conversation.reload.last_error).to eq('Completion failed: boom')
+    expect(conversation.reload.unread).to be true
     expect(conversation.messages.where(role: 'assistant').last&.content).to eq('partial')
     expect(ConversationChannel).to have_received(:broadcast_frame).at_least(:once)
   end
@@ -113,6 +114,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
     described_class.perform_now(conversation.id)
 
     expect(conversation.reload.last_error).to eq('Stopped by user.')
+    expect(conversation.reload.unread).to be false
   end
 
   it 'does not execute remaining tool calls after a stop' do

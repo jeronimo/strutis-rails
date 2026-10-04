@@ -210,6 +210,10 @@ class ConversationCompletionJob < ApplicationJob
       'Completion failed. Please try again.'
     end
     @conversation.update_column(:last_error, @conversation.last_error)
+    unless @stopped
+      @conversation.update_column(:unread, true)
+      UserChannel.broadcast_unread(@conversation, unread: true)
+    end
     broadcast_frame(show_progress: false)
   end
 
