@@ -57,7 +57,7 @@ RSpec.describe 'Conversations', type: :request do
       post "/conversations/#{conversation.public_id}/stop"
 
       expect(response).to have_http_status(:ok)
-      expect(ConversationCompletionJob.stop_requested?(conversation.id)).to be true
+      expect(CompletionSignal.new(conversation.id).stopped?).to be true
     end
   end
 end

@@ -41,7 +41,7 @@ class ConversationsController < ApplicationController
 
     apply_conversation_settings(conversation, model)
 
-    if ConversationCompletionJob.alive?(conversation.id)
+    if CompletionSignal.alive?(conversation.id)
       queued_message = conversation.messages.create!(role: 'user', content: content, model: model, queued: true)
       queued_message.attachments.attach(blobs)
       render turbo_stream: turbo_stream.replace("messages-#{conversation.public_id}", partial: 'conversations/messages_frame', locals: { conversation:, messages: conversation.messages, show_progress: true })
@@ -76,7 +76,7 @@ class ConversationsController < ApplicationController
 
   def stop
     conversation = current_user.conversations.find_by!(public_id: params[:id])
-    ConversationCompletionJob.request_stop(conversation.id)
+    CompletionSignal.request_stop(conversation.id)
     render turbo_stream: turbo_stream.remove("conversation-progress-#{conversation.public_id}")
   end
 

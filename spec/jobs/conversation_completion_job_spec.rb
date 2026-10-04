@@ -109,7 +109,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
   it 'stops the run when a stop is requested' do
     conversation.update!(context_tokens: 0)
     conversation.messages.create!(role: 'user', content: 'new')
-    described_class.request_stop(conversation.id)
+    CompletionSignal.request_stop(conversation.id)
 
     described_class.perform_now(conversation.id)
 
@@ -135,7 +135,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
       end
     end
     allow_any_instance_of(OpenAiService).to receive(:execute_tool) do |_instance, _tool_call, _tools|
-      described_class.request_stop(conversation.id)
+      CompletionSignal.request_stop(conversation.id)
       '{"result":"ok"}'
     end
 
@@ -149,7 +149,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
     conversation.update!(context_tokens: 0)
     conversation.messages.create!(role: 'user', content: 'new')
     conversation.messages.create!(role: 'user', content: 'queued next', queued: true)
-    described_class.request_stop(conversation.id)
+    CompletionSignal.request_stop(conversation.id)
 
     expect { described_class.perform_now(conversation.id) }.to have_enqueued_job(described_class).with(conversation.id)
 
@@ -162,7 +162,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
     conversation.messages.create!(role: 'user', content: 'new')
     alive_during = nil
     allow_any_instance_of(OpenAiService).to receive(:completion) do |_instance, _messages, _model, **_options, &block|
-      alive_during = described_class.alive?(conversation.id)
+      alive_during = CompletionSignal.alive?(conversation.id)
       block&.call('hello')
       { content: 'hello', tool_calls: [], latency_ms: 1, inference_ms: 1, prompt_tokens: 10, completion_tokens: 2, reasoning_tokens: 0 }
     end
@@ -170,7 +170,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
     described_class.perform_now(conversation.id)
 
     expect(alive_during).to be true
-    expect(described_class.alive?(conversation.id)).to be false
+    expect(CompletionSignal.alive?(conversation.id)).to be false
     expect(conversation.reload.unread).to be true
   end
 

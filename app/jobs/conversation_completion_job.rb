@@ -1,40 +1,12 @@
 class ConversationCompletionJob < ApplicationJob
-  STOP_REQUEST_EXPIRES_AFTER = 20.minutes
-  ALIVE_EXPIRES_AFTER = 30.seconds
-  ALIVE_REWRITE_EVERY = 10.seconds
   MAX_TOOL_ROUNDS = 100
 
-  def self.request_stop(conversation_id)
-    Rails.cache.write(stop_key(conversation_id), true, expires_in: STOP_REQUEST_EXPIRES_AFTER)
-  end
-
-  def self.stop_requested?(conversation_id)
-    requested = Rails.cache.read(stop_key(conversation_id)).present?
-    Rails.cache.delete(stop_key(conversation_id)) if requested
-    requested
-  end
-
-  def self.alive?(conversation_id)
-    Rails.cache.exist?(alive_key(conversation_id))
-  end
-
-  def self.rewrite_alive(conversation_id)
-    Rails.cache.write(alive_key(conversation_id), true, expires_in: ALIVE_EXPIRES_AFTER)
-  end
-
-  def self.stop_key(conversation_id)
-    "conversation_completion:stop:#{conversation_id}"
-  end
-
-  def self.alive_key(conversation_id)
-    "conversation_completion:alive:#{conversation_id}"
-  end
-
   def perform(conversation_id)
-    self.class.rewrite_alive(conversation_id)
+    @signal = CompletionSignal.new(conversation_id)
+    @signal.start!
     @conversation = Conversation.find_by(id: conversation_id)
     if @conversation.nil?
-      Rails.cache.delete(self.class.alive_key(conversation_id))
+      @signal.finish!
       return
     end
     @openai = @conversation.open_ai_service
@@ -42,7 +14,6 @@ class ConversationCompletionJob < ApplicationJob
     @finalized = false
     @failure = nil
     @stopped = false
-    @stop_seen = false
     @conversation.update_column(:last_error, nil)
     begin
       run_completion
@@ -52,7 +23,7 @@ class ConversationCompletionJob < ApplicationJob
       Rails.logger.error { "[ConversationCompletionJob] #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
     ensure
       finish_failed_turn
-      Rails.cache.delete(self.class.alive_key(conversation_id))
+      @signal.finish!
     end
     drain_queued_messages
     ConversationTitleJob.perform_later(@conversation.id) if @finalized && @conversation.title_generation_needed?
@@ -79,11 +50,10 @@ class ConversationCompletionJob < ApplicationJob
     metrics = { prompt_tokens: 0, completion_tokens: 0, reasoning_tokens: 0, latency_ms: 0, inference_ms: 0 }
     turns = 0
     loop do
-      if stop_requested_now?
+      if @signal.stopped?
         @stopped = true
         break
       end
-      self.class.rewrite_alive(@conversation.id)
       compact_conversation if @conversation.compaction_needed? || @conversation.prompt_over_budget?
       wrap_up = turns >= MAX_TOOL_ROUNDS
       result = stream_turn(wrap_up ? nil : tools)
@@ -96,7 +66,6 @@ class ConversationCompletionJob < ApplicationJob
       record_context_tokens(result)
       if result[:tool_calls].present? && !wrap_up
         record_tool_turn(result, tools)
-        self.class.rewrite_alive(@conversation.id)
         turns += 1
         next
       end
@@ -107,15 +76,9 @@ class ConversationCompletionJob < ApplicationJob
 
   def stream_turn(tools)
     @message = nil
-    last_alive = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     result = @openai.completion(@conversation.prompt_messages, @conversation.model, tools: tools,
       chat_template_kwargs: @conversation.chat_template_kwargs,
-      should_stop: -> { stop_requested_now? }) do |delta|
-      now = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-      if now - last_alive > ALIVE_REWRITE_EVERY
-        self.class.rewrite_alive(@conversation.id)
-        last_alive = now
-      end
+      should_stop: -> { @signal.stopped? }) do |delta|
       if @message.nil?
         @message = @conversation.messages.create!(role: 'assistant', content: delta, model: @conversation.model)
         broadcast_frame(show_progress: false)
@@ -130,10 +93,6 @@ class ConversationCompletionJob < ApplicationJob
     result
   end
 
-  def stop_requested_now?
-    @stop_seen ||= self.class.stop_requested?(@conversation.id)
-  end
-
   def record_tool_turn(result, tools)
     if @message
       @message.update!(content: result[:content], tool_calls: result[:tool_calls], latency_ms: result[:latency_ms], inference_ms: result[:inference_ms])
@@ -142,7 +101,7 @@ class ConversationCompletionJob < ApplicationJob
     end
     broadcast_frame(show_progress: true)
     result[:tool_calls].each do |tool_call|
-      break if stop_requested_now?
+      break if @signal.stopped?
       start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
       tool_result = @openai.execute_tool(tool_call, tools)
       tool_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
@@ -179,8 +138,7 @@ class ConversationCompletionJob < ApplicationJob
         prompt_tokens: metrics[:prompt_tokens], completion_tokens: metrics[:completion_tokens],
         reasoning_tokens: metrics[:reasoning_tokens])
       @finalized = true
-      @conversation.update_column(:unread, true)
-      UserChannel.broadcast_unread(@conversation, unread: true)
+      mark_unread
       if result[:content].blank? && result[:reasoning].present?
         @conversation.last_error = "The model stopped after thinking for #{format_duration(metrics[:latency_ms])} without producing a response."
         @conversation.update_column(:last_error, @conversation.last_error)
@@ -210,11 +168,13 @@ class ConversationCompletionJob < ApplicationJob
       'Completion failed. Please try again.'
     end
     @conversation.update_column(:last_error, @conversation.last_error)
-    unless @stopped
-      @conversation.update_column(:unread, true)
-      UserChannel.broadcast_unread(@conversation, unread: true)
-    end
+    mark_unread unless @stopped
     broadcast_frame(show_progress: false)
+  end
+
+  def mark_unread
+    @conversation.update_column(:unread, true)
+    UserChannel.broadcast_unread(@conversation, unread: true)
   end
 
   def record_unexecuted_tools
