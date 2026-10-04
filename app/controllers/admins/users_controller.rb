@@ -6,6 +6,10 @@ module Admins
 
     def index
       @users = User.order(created_at: :desc)
+      @usage = @users.to_h { |user| [ user.id, { requests: 0, total_tokens: 0 } ] }
+      usage_summary.each do |row|
+        @usage[row.user_id] = { requests: row.requests.to_i, total_tokens: row.total_tokens.to_i }
+      end
     end
 
     def show
@@ -47,6 +51,20 @@ module Admins
 
     def find_user
       @user = User.find(params[:id])
+    end
+
+    def usage_summary
+      table = Message.arel_table
+      conversation = Conversation.arel_table
+      Message.joins(conversation: :user)
+        .where.not(prompt_tokens: nil)
+        .reorder(nil)
+        .group(conversation[:user_id])
+        .select(
+          conversation[:user_id],
+          table[:id].count.as('requests'),
+          (table[:prompt_tokens].sum + table[:completion_tokens].sum).as('total_tokens')
+        )
     end
 
     def user_params
