@@ -3,6 +3,7 @@
   data: { controller: 'conversation-menu', type: 'conversation', id: conversation.public_id, position: conversation.position } }
   %span.drag-handle{ 'aria-hidden': true }
     = render 'icons/grip'
+  = render 'conversations/unread_badge', conversation: conversation, unread: conversation.unread?
   = link_to conversation_path(conversation.public_id), title: title, class: [ 'flex-grow-1', 'text-truncate', 'text-decoration-none', active && 'text-white' ].compact, data: { conversation_menu_target: 'link' } do
     %span{ id: "conversation-title-#{conversation.public_id}", data: { conversation_menu_target: 'title' } }= title
   = form_with url: conversation_path(conversation.public_id), method: :patch, class: 'conversation-rename-form d-none flex-grow-1', data: { conversation_menu_target: 'form' } do

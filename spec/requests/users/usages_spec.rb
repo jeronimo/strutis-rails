@@ -5,9 +5,9 @@ RSpec.describe 'Users::Usages', type: :request do
   let(:other_user) { User.create!(email: 'other@example.com', password: 'password123') }
 
   before do
-    allow(OpenaiService).to receive(:credentials).and_return({ host: 'localhost', port: 8080, key: 'test-key' })
-    OpenaiService.instance_variable_set(:@models, nil)
-    OpenaiService.instance_variable_set(:@models_fetched_at, nil)
+    allow(OpenAiClient).to receive(:credentials).and_return({ host: 'localhost', port: 8080, key: 'test-key' })
+    OpenAiService.instance_variable_set(:@models, nil)
+    OpenAiService.instance_variable_set(:@models_fetched_at, nil)
     stub_request(:get, 'http://localhost:8080/v1/models')
       .to_return(status: 200, body: { data: [ { id: 'model-a', display_name: 'Model A' }, { id: 'model-b', display_name: 'Model B' } ] }.to_json)
     sign_in_user(user)

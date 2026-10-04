@@ -22,13 +22,26 @@ class ConversationChannel < ApplicationCable::Channel
     if @conversation
       @stream_name = self.class.send(:stream_name_from, @conversation)
       stream_from @stream_name
+      mark_read
       Rails.logger.info "ConversationChannel subscribed to #{@stream_name}"
     else
       reject
     end
   end
 
+  def read
+    mark_read
+  end
+
   def unsubscribed
     Rails.logger.info "ConversationChannel unsubscribed from #{@stream_name}"
+  end
+
+  private
+
+  def mark_read
+    return unless @conversation&.reload&.unread?
+    @conversation.update_column(:unread, false)
+    UserChannel.broadcast_unread(@conversation, unread: false)
   end
 end

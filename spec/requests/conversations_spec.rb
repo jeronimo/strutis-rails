@@ -4,7 +4,7 @@ RSpec.describe 'Conversations', type: :request do
   let(:user) { User.create!(email: 'conversation-user@example.com', password: 'password123') }
 
   before do
-    allow(OpenaiService).to receive(:models).and_return([ { id: 'test-model', context_length: 1000 } ])
+    allow(OpenAiService).to receive(:models).and_return([ { id: 'test-model', context_length: 1000 } ])
     sign_in_user(user)
   end
 
@@ -31,9 +31,9 @@ RSpec.describe 'Conversations', type: :request do
 
   describe 'POST /conversations/transcribe' do
     it 'returns the transcription text' do
-      allow(OpenaiService).to receive(:stt_model).and_return({ id: 'stt-model' })
-      service_instance = instance_double(OpenaiService, transcribe: 'hello world')
-      allow(OpenaiService).to receive(:new).and_return(service_instance)
+      allow(OpenAiService).to receive(:stt_model).and_return({ id: 'stt-model' })
+      service_instance = instance_double(OpenAiService, transcribe: 'hello world')
+      allow(OpenAiService).to receive(:new).and_return(service_instance)
 
       post '/conversations/transcribe', params: { file: fixture_file_upload('audio.webm', 'audio/webm'), model: 'test-model' }
 
@@ -42,7 +42,7 @@ RSpec.describe 'Conversations', type: :request do
     end
 
     it 'requires an audio file' do
-      allow(OpenaiService).to receive(:stt_model).and_return({ id: 'stt-model' })
+      allow(OpenAiService).to receive(:stt_model).and_return({ id: 'stt-model' })
 
       post '/conversations/transcribe'
 

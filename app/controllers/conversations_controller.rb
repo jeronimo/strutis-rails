@@ -41,7 +41,7 @@ class ConversationsController < ApplicationController
 
     apply_conversation_settings(conversation, model)
 
-    if ConversationCompletionJob.active?(conversation.id)
+    if ConversationCompletionJob.alive?(conversation.id)
       queued_message = conversation.messages.create!(role: 'user', content: content, model: model, queued: true)
       queued_message.attachments.attach(blobs)
       render turbo_stream: turbo_stream.replace("messages-#{conversation.public_id}", partial: 'conversations/messages_frame', locals: { conversation:, messages: conversation.messages, show_progress: true })
@@ -59,16 +59,16 @@ class ConversationsController < ApplicationController
 
   def transcribe
     audio_file = params[:file]
-    stt_model = OpenaiService.stt_model
+    stt_model = OpenAiService.stt_model
     if audio_file.blank? || stt_model.blank?
       render json: { error: 'Audio file is required.' }, status: :unprocessable_content
       return
     end
 
     conversation = find_or_create_conversation(params[:conversation_public_id].presence, 'Voice message', params[:model])
-    text = OpenaiService.new(conversation_id: conversation.public_id, user_public_id: current_user.public_id).transcribe(audio_file, stt_model[:id])
+    text = OpenAiService.new(conversation_id: conversation.public_id, user_public_id: current_user.public_id).transcribe(audio_file, stt_model[:id])
     render json: { text: text }
-  rescue OpenaiService::Error => e
+  rescue OpenAiService::Error => e
     Sentry.capture_exception(e)
     Rails.logger.error { "[ConversationsController#transcribe] #{e.class}: #{e.message}" }
     render json: { error: e.message }, status: :bad_gateway
@@ -148,7 +148,7 @@ class ConversationsController < ApplicationController
 
   def valid_reasoning_effort(model)
     effort = create_params[:reasoning_effort].presence
-    options = OpenaiService.chat_template_kwargs(model)&.dig(:reasoning_effort_options) || []
+    options = OpenAiService.chat_template_kwargs(model)&.dig(:reasoning_effort_options) || []
     options.include?(effort) ? effort : nil
   end
 
@@ -192,7 +192,7 @@ class ConversationsController < ApplicationController
   end
 
   def chat_models
-    OpenaiService.models.select { |model| OpenaiService.supports_text_input?(model[:id]) && OpenaiService.visible?(model[:id]) }
+    OpenAiService.models.select { |model| OpenAiService.supports_text_input?(model[:id]) && OpenAiService.visible?(model[:id]) }
   end
 
   def available_models
@@ -205,7 +205,7 @@ class ConversationsController < ApplicationController
       metadata[model[:id]] = {
         display_name: model[:display_name].presence || model[:id],
         context_length: model[:context_length],
-        supports_image_input: OpenaiService.supports_image_input?(model[:id]),
+        supports_image_input: OpenAiService.supports_image_input?(model[:id]),
         supports_thinking: kwargs.key?(:enable_thinking),
         default_thinking: kwargs[:enable_thinking] || false,
         reasoning_effort_options: Array(kwargs[:reasoning_effort_options]),
@@ -226,7 +226,7 @@ class ConversationsController < ApplicationController
       supports_thinking: metadata[current][:supports_thinking],
       reasoning_effort: @conversation ? (@conversation.reasoning_effort || metadata[current]&.dig(:default_reasoning_effort)) : metadata[current]&.dig(:default_reasoning_effort),
       reasoning_effort_options: metadata[current]&.fetch(:reasoning_effort_options, []) || [],
-      stt_available: OpenaiService.stt_model.present?
+      stt_available: OpenAiService.stt_model.present?
     }
     @context = {
       tokens: @conversation&.context_tokens || 0,

@@ -427,6 +427,14 @@ input[readonly]:focus {
   border-left: 3px solid var(--bs-primary);
 }
 
+.conversation-unread {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background-color: var(--bs-danger);
+  flex-shrink: 0;
+}
+
 .folder-header {
   background-color: var(--bs-tertiary-bg);
   border-bottom: 1px solid rgba(var(--bs-primary-rgb), 0.1);

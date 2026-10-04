@@ -3,7 +3,7 @@ module Users
     def show
       @usage = current_user.usage_by_model.to_a.map do |row|
         {
-          name: OpenaiService.display_name(row.model),
+          name: OpenAiService.display_name(row.model),
           requests: row.requests.to_i,
           input: row.prompt_tokens.to_i,
           output: row.completion_tokens.to_i,

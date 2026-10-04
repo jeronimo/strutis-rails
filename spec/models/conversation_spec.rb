@@ -4,25 +4,25 @@ RSpec.describe Conversation, type: :model do
   let(:user) { User.create!(email: 'conversation-user@example.com', password: 'password123') }
   let(:conversation) { user.conversations.create!(model: 'test-model') }
 
-  describe '#openai_service' do
+  describe '#open_ai_service' do
     it 'builds a service with the conversation and user public ids' do
-      service = conversation.openai_service
+      service = conversation.open_ai_service
 
-      expect(service).to be_a(OpenaiService)
+      expect(service).to be_a(OpenAiService)
       expect(service.instance_variable_get(:@conversation_id)).to eq(conversation.public_id)
-      expect(service.instance_variable_get(:@user_public_id)).to eq(user.public_id)
+      expect(service.client.instance_variable_get(:@user_public_id)).to eq(user.public_id)
     end
   end
 
   describe '#context_usage_percent' do
     it 'returns nil without a context window' do
-      allow(OpenaiService).to receive(:context_length).with('test-model').and_return(nil)
+      allow(OpenAiService).to receive(:context_length).with('test-model').and_return(nil)
       expect(conversation.context_usage_percent).to be_nil
     end
 
     it 'calculates percentage from context window' do
       conversation.update!(context_tokens: 80)
-      allow(OpenaiService).to receive(:context_length).with('test-model').and_return(1000)
+      allow(OpenAiService).to receive(:context_length).with('test-model').and_return(1000)
       expect(conversation.context_usage_percent).to eq(8)
     end
   end
@@ -30,13 +30,13 @@ RSpec.describe Conversation, type: :model do
   describe '#compaction_needed?' do
     it 'is false at the threshold' do
       conversation.update!(context_tokens: 80)
-      allow(OpenaiService).to receive(:context_length).with('test-model').and_return(100)
+      allow(OpenAiService).to receive(:context_length).with('test-model').and_return(100)
       expect(conversation.compaction_needed?).to be false
     end
 
     it 'is true above the threshold' do
       conversation.update!(context_tokens: 81)
-      allow(OpenaiService).to receive(:context_length).with('test-model').and_return(100)
+      allow(OpenAiService).to receive(:context_length).with('test-model').and_return(100)
       expect(conversation.compaction_needed?).to be true
     end
   end
@@ -57,19 +57,19 @@ RSpec.describe Conversation, type: :model do
 
   describe '#chat_template_kwargs' do
     it 'returns nil when the model has no chat_template_kwargs' do
-      allow(OpenaiService).to receive(:chat_template_kwargs).with('test-model').and_return(nil)
+      allow(OpenAiService).to receive(:chat_template_kwargs).with('test-model').and_return(nil)
       expect(conversation.chat_template_kwargs).to be_nil
     end
 
     it 'merges enable_thinking and keeps other defaults' do
-      allow(OpenaiService).to receive(:chat_template_kwargs).with('test-model')
+      allow(OpenAiService).to receive(:chat_template_kwargs).with('test-model')
         .and_return({ enable_thinking: true, reasoning_effort: 'medium', preserve_thinking: true })
       conversation.update!(thinking: false)
       expect(conversation.chat_template_kwargs).to eq({ enable_thinking: false, reasoning_effort: 'medium', preserve_thinking: true })
     end
 
     it 'merges reasoning_effort only when set' do
-      allow(OpenaiService).to receive(:chat_template_kwargs).with('test-model')
+      allow(OpenAiService).to receive(:chat_template_kwargs).with('test-model')
         .and_return({ enable_thinking: true, reasoning_effort: 'medium' })
       conversation.update!(thinking: true)
       expect(conversation.chat_template_kwargs).to eq({ enable_thinking: true, reasoning_effort: 'medium' })
@@ -81,7 +81,7 @@ RSpec.describe Conversation, type: :model do
   describe '#prompt_messages' do
     before do
       Prompt.create!(key: 'digest', user_id: nil, content: Prompt::DIGEST_DEFAULT)
-      allow(OpenaiService).to receive(:supports_image_input?).with('test-model').and_return(false)
+      allow(OpenAiService).to receive(:supports_image_input?).with('test-model').and_return(false)
       ActiveStorage::Current.url_options = { host: 'test.host' }
     end
 
@@ -104,7 +104,7 @@ RSpec.describe Conversation, type: :model do
     end
 
     it 'sends one image_url entry per image with the text only on the first entry for image-capable models' do
-      allow(OpenaiService).to receive(:supports_image_input?).with('test-model').and_return(true)
+      allow(OpenAiService).to receive(:supports_image_input?).with('test-model').and_return(true)
       message = conversation.messages.create!(role: 'user', content: 'describe these')
       first = ActiveStorage::Blob.create_and_upload!(io: StringIO.new('img1'), filename: 'one.png', content_type: 'image/png')
       second = ActiveStorage::Blob.create_and_upload!(io: StringIO.new('img2'), filename: 'two.png', content_type: 'image/png')
@@ -120,7 +120,7 @@ RSpec.describe Conversation, type: :model do
     end
 
     it 'keeps non-image attachments as text lines alongside image_url entries' do
-      allow(OpenaiService).to receive(:supports_image_input?).with('test-model').and_return(true)
+      allow(OpenAiService).to receive(:supports_image_input?).with('test-model').and_return(true)
       message = conversation.messages.create!(role: 'user', content: 'check both')
       image = ActiveStorage::Blob.create_and_upload!(io: StringIO.new('img'), filename: 'one.png', content_type: 'image/png')
       doc = ActiveStorage::Blob.create_and_upload!(io: StringIO.new('pdf'), filename: 'doc.pdf', content_type: 'application/pdf')
@@ -134,7 +134,7 @@ RSpec.describe Conversation, type: :model do
     end
 
     it 'keeps image attachments as text url lines for models without image input' do
-      allow(OpenaiService).to receive(:supports_image_input?).with('test-model').and_return(false)
+      allow(OpenAiService).to receive(:supports_image_input?).with('test-model').and_return(false)
       message = conversation.messages.create!(role: 'user', content: 'describe these')
       image = ActiveStorage::Blob.create_and_upload!(io: StringIO.new('img'), filename: 'one.png', content_type: 'image/png')
       message.attachments.attach(image)

@@ -1,6 +1,6 @@
 import { createConsumer } from "@rails/actioncable/src"
 
-const consumer = createConsumer()
+export const consumer = createConsumer()
 let currentSubscription = null
 let currentPublicId = null
 
@@ -16,6 +16,9 @@ export function subscribeConversation(publicId) {
     {
       received(data) {
         applyStream(data)
+        if (typeof data === 'string' && data.includes(`messages-${publicId}`) && !document.querySelector(`#messages-${publicId} .chat-progress`)) {
+          this.perform('read')
+        }
       },
       connected() {
         currentSubscription = newSubscription

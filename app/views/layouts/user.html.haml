@@ -23,7 +23,7 @@
     = stylesheet_link_tag 'application', 'data-turbo-track': 'reload'
     = isolated_importmap_tags 'application'
 
-  %body.user-layout{ data: { controller: 'conversation-drawer' } }
+  %body.user-layout{ data: { controller: 'conversation-drawer user-stream' } }
     .conversation-drawer-backdrop{ data: { conversation_drawer_target: 'backdrop', action: 'conversation-drawer#close' } }
     .container-fluid
       .row

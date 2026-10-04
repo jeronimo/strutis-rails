@@ -3,11 +3,11 @@ require 'rails_helper'
 RSpec.describe ConversationCompactionService do
   let(:user) { User.create!(email: 'compaction-user@example.com', password: 'password123') }
   let(:conversation) { user.conversations.create!(model: 'test-model') }
-  let(:openai) { instance_double(OpenaiService) }
+  let(:openai) { instance_double(OpenAiService) }
 
   before do
     Prompt.create!(key: 'compacting', user_id: nil, content: Prompt::COMPACTING_DEFAULT)
-    allow(OpenaiService).to receive(:supports_image_input?).and_return(false)
+    allow(OpenAiService).to receive(:supports_image_input?).and_return(false)
   end
 
   it 'compacts old non-system messages and keeps system messages and the latest user turn' do

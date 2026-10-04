@@ -1,16 +1,18 @@
 require 'rails_helper'
 
 RSpec.describe ConversationCompletionJob, type: :job do
+  include ActionCable::TestHelper
+
   let(:user) { User.create!(email: 'completion-job-user@example.com', password: 'password123') }
   let(:conversation) { user.conversations.create!(model: 'test-model', context_tokens: 81) }
 
   before do
-    allow(OpenaiService).to receive(:context_length).with('test-model').and_return(100)
-    allow(OpenaiService).to receive(:chat_template_kwargs).and_return(nil)
-    allow(OpenaiService).to receive(:supports_image_input?).and_return(false)
-    allow_any_instance_of(OpenaiService).to receive(:tools).and_return([])
+    allow(OpenAiService).to receive(:context_length).with('test-model').and_return(100)
+    allow(OpenAiService).to receive(:chat_template_kwargs).and_return(nil)
+    allow(OpenAiService).to receive(:supports_image_input?).and_return(false)
+    allow_any_instance_of(OpenAiService).to receive(:tools).and_return([])
     allow(ConversationChannel).to receive(:broadcast_frame)
-    allow_any_instance_of(OpenaiService).to receive(:completion) do |_messages, _model, **_options, &block|
+    allow_any_instance_of(OpenAiService).to receive(:completion) do |_messages, _model, **_options, &block|
       block&.call('hello')
       { content: 'hello', tool_calls: [], latency_ms: 1, inference_ms: 1, prompt_tokens: 10, completion_tokens: 2, reasoning_tokens: 0 }
     end
@@ -24,7 +26,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
 
     described_class.perform_now(conversation.id)
 
-    expect(ConversationCompactionService).to have_received(:perform).with(a_kind_of(Conversation), an_instance_of(OpenaiService))
+    expect(ConversationCompactionService).to have_received(:perform).with(a_kind_of(Conversation), an_instance_of(OpenAiService))
     expect(conversation.messages.reload.where(role: 'assistant').last&.content).to eq('hello')
   end
 
@@ -42,9 +44,9 @@ RSpec.describe ConversationCompletionJob, type: :job do
   it 'persists the error message, keeps the partial message, and broadcasts the error when completion fails' do
     conversation.update!(context_tokens: 0)
     conversation.messages.create!(role: 'user', content: 'new')
-    allow_any_instance_of(OpenaiService).to receive(:completion) do |_messages, _model, **_options, &block|
+    allow_any_instance_of(OpenAiService).to receive(:completion) do |_messages, _model, **_options, &block|
       block&.call('partial')
-      raise OpenaiService::Error, 'boom'
+      raise OpenAiService::Error, 'boom'
     end
 
     described_class.perform_now(conversation.id)
@@ -59,15 +61,15 @@ RSpec.describe ConversationCompletionJob, type: :job do
     conversation.messages.create!(role: 'user', content: 'new')
     tool_call = { id: 'call_1', type: 'function', function: { name: 'search', arguments: '{"query":"x"}' } }
     calls = 0
-    allow_any_instance_of(OpenaiService).to receive(:completion) do |_messages, _model, **_options, &block|
+    allow_any_instance_of(OpenAiService).to receive(:completion) do |_messages, _model, **_options, &block|
       calls += 1
       if calls == 1
         { content: '', reasoning: 'thinking', tool_calls: [ tool_call ], latency_ms: 1, inference_ms: 1, prompt_tokens: 10, completion_tokens: 5, reasoning_tokens: 0 }
       else
-        raise OpenaiService::Error, 'boom'
+        raise OpenAiService::Error, 'boom'
       end
     end
-    allow_any_instance_of(OpenaiService).to receive(:execute_tool).and_raise(OpenaiService::Error, 'boom')
+    allow_any_instance_of(OpenAiService).to receive(:execute_tool).and_raise(OpenAiService::Error, 'boom')
 
     described_class.perform_now(conversation.id)
 
@@ -82,7 +84,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
     conversation.messages.create!(role: 'user', content: 'new')
     tool_call = { id: 'call_1', type: 'function', function: { name: 'search', arguments: '{"query":"x"}' } }
     calls = 0
-    allow_any_instance_of(OpenaiService).to receive(:completion) do |_messages, _model, **_options, &block|
+    allow_any_instance_of(OpenAiService).to receive(:completion) do |_messages, _model, **_options, &block|
       calls += 1
       if calls == 1
         { content: '', reasoning: 'thinking', tool_calls: [ tool_call ], latency_ms: 1200, inference_ms: 1100, prompt_tokens: 10, completion_tokens: 5, reasoning_tokens: 4 }
@@ -91,7 +93,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
         { content: 'done', tool_calls: [], latency_ms: 300, inference_ms: 200, prompt_tokens: 12, completion_tokens: 3, reasoning_tokens: 0 }
       end
     end
-    allow_any_instance_of(OpenaiService).to receive(:execute_tool).and_return('{"result":"ok"}')
+    allow_any_instance_of(OpenAiService).to receive(:execute_tool).and_return('{"result":"ok"}')
 
     described_class.perform_now(conversation.id)
 
@@ -103,10 +105,77 @@ RSpec.describe ConversationCompletionJob, type: :job do
     expect(assistant_messages.last.latency_ms).to eq(1500)
   end
 
+  it 'stops the run when a stop is requested' do
+    conversation.update!(context_tokens: 0)
+    conversation.messages.create!(role: 'user', content: 'new')
+    described_class.request_stop(conversation.id)
+
+    described_class.perform_now(conversation.id)
+
+    expect(conversation.reload.last_error).to eq('Stopped by user.')
+  end
+
+  it 'marks the conversation alive while running and unread after finishing' do
+    conversation.update!(context_tokens: 0)
+    conversation.messages.create!(role: 'user', content: 'new')
+    alive_during = nil
+    allow_any_instance_of(OpenAiService).to receive(:completion) do |_instance, _messages, _model, **_options, &block|
+      alive_during = described_class.alive?(conversation.id)
+      block&.call('hello')
+      { content: 'hello', tool_calls: [], latency_ms: 1, inference_ms: 1, prompt_tokens: 10, completion_tokens: 2, reasoning_tokens: 0 }
+    end
+
+    described_class.perform_now(conversation.id)
+
+    expect(alive_during).to be true
+    expect(described_class.alive?(conversation.id)).to be false
+    expect(conversation.reload.unread).to be true
+  end
+
+  it 'broadcasts the unread badge to the user channel on finalize' do
+    conversation.update!(context_tokens: 0)
+    conversation.messages.create!(role: 'user', content: 'new')
+
+    stream = user.to_gid_param
+    assert_no_broadcasts stream
+    described_class.perform_now(conversation.id)
+    assert_broadcasts stream, 1
+
+    message = ActiveSupport::JSON.decode(broadcasts(stream).last).to_s
+    expect(message).to include("conversation-unread-#{conversation.public_id}")
+    expect(message).not_to include('d-none')
+  end
+
+  it 'forces a tool-less wrap-up answer when the tool turn cap is reached' do
+    conversation.update!(context_tokens: 0)
+    conversation.messages.create!(role: 'user', content: 'new')
+    stub_const('ConversationCompletionJob::MAX_TOOL_ROUNDS', 2)
+    tool_call = { id: 'call_1', type: 'function', function: { name: 'search', arguments: '{"query":"x"}' } }
+    calls = 0
+    tool_sets = []
+    allow_any_instance_of(OpenAiService).to receive(:completion) do |_instance, _messages, _model, **options, &block|
+      calls += 1
+      tool_sets << options[:tools]
+      if calls <= 2
+        { content: '', tool_calls: [ tool_call ], latency_ms: 1, inference_ms: 1, prompt_tokens: 10, completion_tokens: 5, reasoning_tokens: 0 }
+      else
+        block&.call('done')
+        { content: 'done', tool_calls: [], latency_ms: 1, inference_ms: 1, prompt_tokens: 10, completion_tokens: 2, reasoning_tokens: 0 }
+      end
+    end
+    allow_any_instance_of(OpenAiService).to receive(:execute_tool).and_return('{"result":"ok"}')
+
+    described_class.perform_now(conversation.id)
+
+    expect(tool_sets[2]).to be_nil
+    expect(conversation.messages.reload.where(role: 'assistant').last.content).to eq('done')
+    expect(conversation.reload.last_error).to be_nil
+  end
+
   it 'keeps the last known context_tokens when usage is missing from the stream' do
     conversation.update!(context_tokens: 50)
     conversation.messages.create!(role: 'user', content: 'new')
-    allow_any_instance_of(OpenaiService).to receive(:completion) do |_messages, _model, **_options, &block|
+    allow_any_instance_of(OpenAiService).to receive(:completion) do |_messages, _model, **_options, &block|
       block&.call('hello')
       { content: 'hello', tool_calls: [], latency_ms: 1, inference_ms: 1 }
     end
@@ -118,11 +187,14 @@ RSpec.describe ConversationCompletionJob, type: :job do
 
   context 'with real SSE streaming (no completion stub)' do
     before do
-      allow(OpenaiService).to receive(:credentials).and_return({ host: 'localhost', port: 8080, key: 'test-key', open_timeout: 5, read_timeout: 30 })
-      OpenaiService.instance_variable_set(:@models, nil)
-      OpenaiService.instance_variable_set(:@models_fetched_at, nil)
-      allow_any_instance_of(OpenaiService).to receive(:tools).and_return([])
-      allow_any_instance_of(OpenaiService).to receive(:completion).and_call_original
+      allow(OpenAiClient).to receive(:credentials).and_return({ host: 'localhost', port: 8080, key: 'test-key' })
+      stub_const('OpenAiClient::MAX_RETRIES', 1)
+      stub_const('OpenAiClient::RETRY_INTERVAL', 0)
+      stub_const('OpenAiClient::RETRY_INTERVAL_STEP', 0)
+      OpenAiService.instance_variable_set(:@models, nil)
+      OpenAiService.instance_variable_set(:@models_fetched_at, nil)
+      allow_any_instance_of(OpenAiService).to receive(:tools).and_return([])
+      allow_any_instance_of(OpenAiService).to receive(:completion).and_call_original
       conversation.update!(context_tokens: 0)
       conversation.messages.create!(role: 'user', content: 'what model?')
     end

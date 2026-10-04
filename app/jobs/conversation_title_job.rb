@@ -4,7 +4,7 @@ class ConversationTitleJob < ApplicationJob
     return unless @conversation
     return unless @conversation.title_generation_needed?
 
-    title = ConversationTitleService.perform(@conversation, @conversation.openai_service)
+    title = ConversationTitleService.perform(@conversation, @conversation.open_ai_service)
     return if title.blank?
 
     ConversationChannel.broadcast_title(@conversation)

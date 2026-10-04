@@ -4,7 +4,7 @@ RSpec.describe ConversationTitleService do
   let(:user) { User.create!(email: 'title-service-user@example.com', password: 'password123') }
   let(:content) { 'A' * 100 }
   let(:conversation) { user.conversations.create!(model: 'test-model', title: content[0, 60]) }
-  let(:openai) { instance_double(OpenaiService) }
+  let(:openai) { instance_double(OpenAiService) }
 
   before do
     conversation.messages.create!(role: 'user', content: content)

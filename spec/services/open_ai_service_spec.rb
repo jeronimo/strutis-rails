@@ -1,8 +1,11 @@
 require 'rails_helper'
 
-RSpec.describe OpenaiService do
+RSpec.describe OpenAiService do
   before do
-    allow(described_class).to receive(:credentials).and_return({ host: 'localhost', port: 8080, key: 'test-key', open_timeout: 5, read_timeout: 30 })
+    allow(OpenAiClient).to receive(:credentials).and_return({ host: 'localhost', port: 8080, key: 'test-key' })
+    stub_const('OpenAiClient::MAX_RETRIES', 1)
+    stub_const('OpenAiClient::RETRY_INTERVAL', 0)
+    stub_const('OpenAiClient::RETRY_INTERVAL_STEP', 0)
     described_class.instance_variable_set(:@models, nil)
     described_class.instance_variable_set(:@models_fetched_at, nil)
   end
@@ -210,7 +213,18 @@ RSpec.describe OpenaiService do
     it 'raises with the error detail on a non-success response' do
       stub_request(:post, 'http://localhost:8080/v1/chat/completions').to_return(status: 500, body: '{"error":{"message":"boom"}}')
 
-      expect { described_class.new.completion([ { role: 'user', content: 'hi' } ], 'test-model') }.to raise_error(OpenaiService::Error, /boom/)
+      expect { described_class.new.completion([ { role: 'user', content: 'hi' } ], 'test-model') }.to raise_error(OpenAiService::Error, /boom/)
+    end
+
+    it 'retries a refused connection before streaming' do
+      stub_request(:post, 'http://localhost:8080/v1/chat/completions')
+        .to_raise(Errno::ECONNREFUSED).then
+        .to_return(status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: sse({ choices: [ { delta: { content: 'hi' } } ] }, '[DONE]'))
+
+      result = described_class.new.completion([ { role: 'user', content: 'hi' } ], 'test-model')
+
+      expect(result[:content]).to eq('hi')
+      expect(a_request(:post, 'http://localhost:8080/v1/chat/completions')).to have_been_made.times(2)
     end
   end
 
@@ -224,7 +238,7 @@ RSpec.describe OpenaiService do
     it 'raises with the error detail on a non-success response' do
       stub_request(:get, 'http://localhost:8080/v1/tools').to_return(status: 500, body: '{"error":{"message":"boom"}}')
 
-      expect { described_class.new.tools }.to raise_error(OpenaiService::Error, /boom/)
+      expect { described_class.new.tools }.to raise_error(OpenAiService::Error, /boom/)
     end
   end
 
@@ -267,6 +281,22 @@ RSpec.describe OpenaiService do
 
       expect(described_class.stt_model[:id]).to eq('m2')
     end
+
+    it 'serves the stale model list when a refresh fails' do
+      stub_request(:get, 'http://localhost:8080/v1/models').to_return(status: 200, body: '{"data":[{"id":"m1","context_length":100}]}')
+      expect(described_class.models).to eq([ { id: 'm1', context_length: 100 } ])
+
+      described_class.instance_variable_set(:@models_fetched_at, Time.now - 700)
+      stub_request(:get, 'http://localhost:8080/v1/models').to_return(status: 500, body: '{"error":{"message":"down"}}')
+
+      expect(described_class.models).to eq([ { id: 'm1', context_length: 100 } ])
+    end
+
+    it 'raises when the model list was never fetched and the service is down' do
+      stub_request(:get, 'http://localhost:8080/v1/models').to_raise(Errno::ECONNREFUSED)
+
+      expect { described_class.models }.to raise_error(Errno::ECONNREFUSED)
+    end
   end
 
   describe '#transcribe' do
@@ -295,7 +325,7 @@ RSpec.describe OpenaiService do
     it 'raises an error on a non-success response' do
       stub_request(:post, 'http://localhost:8080/v1/audio/transcriptions').to_return(status: 500, body: '{"error":{"message":"boom"}}')
 
-      expect { described_class.new.transcribe(audio_file, 'stt-model') }.to raise_error(OpenaiService::Error, /boom/)
+      expect { described_class.new.transcribe(audio_file, 'stt-model') }.to raise_error(OpenAiService::Error, /boom/)
     end
   end
 end

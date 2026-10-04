@@ -32,7 +32,7 @@ RSpec.describe ConversationTitleJob, type: :job do
 
     described_class.perform_now(conversation.id)
 
-    expect(ConversationTitleService).to have_received(:perform).with(conversation, an_instance_of(OpenaiService))
+    expect(ConversationTitleService).to have_received(:perform).with(conversation, an_instance_of(OpenAiService))
   end
 
   it 'broadcasts the title when the service returns one' do

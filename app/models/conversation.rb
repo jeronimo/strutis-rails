@@ -21,12 +21,12 @@ class Conversation < ApplicationRecord
     update_columns(deleted_at: nil)
   end
 
-  def openai_service
-    OpenaiService.new(conversation_id: public_id, user_public_id: user.public_id)
+  def open_ai_service
+    OpenAiService.new(conversation_id: public_id, user_public_id: user.public_id)
   end
 
   def context_window
-    OpenaiService.context_length(model)
+    OpenAiService.context_length(model)
   end
 
   def context_usage_percent
@@ -69,7 +69,7 @@ class Conversation < ApplicationRecord
   end
 
   def chat_template_kwargs
-    kwargs = OpenaiService.chat_template_kwargs(model)
+    kwargs = OpenAiService.chat_template_kwargs(model)
     return unless kwargs
     kwargs = kwargs.merge(enable_thinking: thinking)
     kwargs = kwargs.merge(reasoning_effort: reasoning_effort) if reasoning_effort.present?
@@ -78,7 +78,7 @@ class Conversation < ApplicationRecord
 
   def prompt_messages
     active = messages.where(compacted_at: nil).where.not(role: 'compaction').where(queued: false).to_a
-    image_input = OpenaiService.supports_image_input?(model)
+    image_input = OpenAiService.supports_image_input?(model)
     entries = active.select { |message| message.role == 'system' }.map(&:to_prompt_entry)
     digest = compaction_digest if summary.present?
     entries << { role: 'user', content: digest } if digest.present?
