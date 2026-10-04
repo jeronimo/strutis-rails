@@ -12,7 +12,7 @@ class ConversationsController < ApplicationController
   end
 
   def show
-    @conversation = Conversation.find_by!(public_id: params[:id])
+    @conversation = Conversation.includes(messages: { attachments_attachments: :blob }).find_by!(public_id: params[:id])
     @shared = current_user&.id != @conversation.user_id
     mark_conversation_read if !@shared && @conversation.unread?
     setup_conversation_model
