@@ -4,7 +4,7 @@ RSpec.describe 'Conversations', type: :request do
   let(:user) { User.create!(email: 'conversation-user@example.com', password: 'password123') }
 
   before do
-    allow(OpenAiService).to receive(:models).and_return([ { id: 'test-model', context_length: 1000 } ])
+    allow(OpenAiService).to receive(:models).and_return([ { id: 'test-model', context_length: 1000, capabilities: { input: [ 'text' ] } } ])
     sign_in_user(user)
   end
 
@@ -47,6 +47,26 @@ RSpec.describe 'Conversations', type: :request do
       post '/conversations/transcribe'
 
       expect(response).to have_http_status(:unprocessable_content)
+    end
+  end
+
+  describe 'GET /conversations/:id' do
+    it 'marks the conversation read so the sidebar badge renders cleared' do
+      conversation = user.conversations.create!(model: 'test-model', unread: true)
+
+      get "/conversations/#{conversation.public_id}"
+
+      expect(response).to have_http_status(:ok)
+      expect(conversation.reload.unread).to be false
+    end
+
+    it 'does not mark another user\'s shared conversation read' do
+      other = User.create!(email: 'other-owner@example.com', password: 'password123')
+      conversation = other.conversations.create!(model: 'test-model', unread: true)
+
+      get "/conversations/#{conversation.public_id}"
+
+      expect(conversation.reload.unread).to be true
     end
   end
 

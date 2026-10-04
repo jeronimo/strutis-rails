@@ -14,6 +14,7 @@ class ConversationsController < ApplicationController
   def show
     @conversation = Conversation.find_by!(public_id: params[:id])
     @shared = current_user&.id != @conversation.user_id
+    mark_conversation_read if !@shared && @conversation.unread?
     setup_conversation_model
   end
 
@@ -123,6 +124,11 @@ class ConversationsController < ApplicationController
   end
 
   private
+
+  def mark_conversation_read
+    @conversation.update_column(:unread, false)
+    @conversations.find { |c| c.id == @conversation.id }&.unread = false
+  end
 
   def create_params
     @create_params ||= params.permit(:model, :message, :conversation_public_id, :folder_id, :thinking, :reasoning_effort, :attachments, attachments: [])
