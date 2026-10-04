@@ -1,1 +1,5 @@
-.alert.alert-warning.mb-2= error
+- alert = tag.div(error, class: 'alert alert-warning mb-2')
+- if error == 'Stopped by user.'
+  .d-flex.justify-content-end= alert
+- else
+  = alert
