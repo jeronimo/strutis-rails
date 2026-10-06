@@ -49,4 +49,16 @@ RSpec.describe Message, type: :model do
       end
     end
   end
+
+  describe '#audio_attachment?' do
+    it 'is true for audio attachments and false for other content types' do
+      message = conversation.messages.create!(role: 'user', content: 'hi')
+      message.attachments.attach([ upload('voice.mp3', 'audio/mpeg'), upload('one.png', 'image/png') ])
+      audio = message.attachments.find { |attachment| attachment.blob.content_type == 'audio/mpeg' }
+      image = message.attachments.find { |attachment| attachment.blob.content_type == 'image/png' }
+
+      expect(message.audio_attachment?(audio)).to be true
+      expect(message.audio_attachment?(image)).to be false
+    end
+  end
 end

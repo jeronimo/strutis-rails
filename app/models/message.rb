@@ -53,10 +53,6 @@ class Message < ApplicationRecord
     end
   end
 
-  def audio_attachment?(attachment)
-    attachment.blob.content_type.to_s.start_with?('audio/')
-  end
-
   private
 
   def ensure_json
