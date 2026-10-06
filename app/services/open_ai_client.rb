@@ -103,7 +103,7 @@ class OpenAiClient
   end
 
   def exchange_json(method, path, body)
-    uri = URI("http://#{self.class.host}:#{self.class.port}#{path}")
+    uri = uri_for(path)
     http, request = build_request(method, uri, body)
     log_request(request, uri, body)
 
@@ -115,7 +115,7 @@ class OpenAiClient
   end
 
   def exchange_multipart(path, model, audio_file)
-    uri = URI("http://#{self.class.host}:#{self.class.port}#{path}")
+    uri = uri_for(path)
     http, request = build_multipart_request(uri, model, audio_file)
     log_request(request, uri, model)
 
@@ -127,7 +127,7 @@ class OpenAiClient
   end
 
   def perform_stream(path, body, should_stop, timing)
-    uri = URI("http://#{self.class.host}:#{self.class.port}#{path}")
+    uri = uri_for(path)
     http, request = build_request('POST', uri, body)
     http.read_timeout = STREAM_IDLE_TIMEOUT
     log_request(request, uri, body)
@@ -167,9 +167,7 @@ class OpenAiClient
   end
 
   def build_request(method, uri, body)
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.open_timeout = OPEN_TIMEOUT
-    http.read_timeout = READ_TIMEOUT
+    http = new_http(uri)
 
     request = case method
     when 'GET'
@@ -180,17 +178,13 @@ class OpenAiClient
       req
     end
 
-    request['Authorization'] = "Bearer #{self.class.key}"
     request['Content-Type'] = 'application/json'
-    request['X-Conversation-Id'] = @conversation_id
-    request['X-User-Public-Id'] = user_public_id_header
+    authorize(request)
     [ http, request ]
   end
 
   def build_multipart_request(uri, model, audio_file)
-    http = Net::HTTP.new(uri.host, uri.port)
-    http.open_timeout = OPEN_TIMEOUT
-    http.read_timeout = READ_TIMEOUT
+    http = new_http(uri)
 
     audio_file.tempfile.rewind
     file_content = audio_file.tempfile.read
@@ -204,12 +198,27 @@ class OpenAiClient
     body << "\r\n--#{boundary}--\r\n".b
 
     request = Net::HTTP::Post.new(uri)
-    request['Authorization'] = "Bearer #{self.class.key}"
     request['Content-Type'] = "multipart/form-data; boundary=#{boundary}"
-    request['X-Conversation-Id'] = @conversation_id
-    request['X-User-Public-Id'] = user_public_id_header
+    authorize(request)
     request.body = body
     [ http, request ]
+  end
+
+  def uri_for(path)
+    URI("http://#{self.class.host}:#{self.class.port}#{path}")
+  end
+
+  def new_http(uri)
+    Net::HTTP.new(uri.host, uri.port).tap do |http|
+      http.open_timeout = OPEN_TIMEOUT
+      http.read_timeout = READ_TIMEOUT
+    end
+  end
+
+  def authorize(request)
+    request['Authorization'] = "Bearer #{self.class.key}"
+    request['X-Conversation-Id'] = @conversation_id
+    request['X-User-Public-Id'] = user_public_id_header
   end
 
   def user_public_id_header
@@ -236,13 +245,13 @@ class OpenAiClient
 
   def log_request(request, uri, body)
     Rails.logger.info "[OpenAI] #{request.method} #{uri.path}"
-    Rails.logger.info "[OpenAI] Request headers: #{request.to_hash.except('Authorization').to_json}"
-    Rails.logger.info "[OpenAI] Body: #{body&.to_json}"
+    Rails.logger.info "[OpenAI] Request headers: #{request.to_hash.except('authorization').to_json}"
+    Rails.logger.debug { "[OpenAI] Body: #{body&.to_json}" }
   end
 
   def log_response(response)
     Rails.logger.info "[OpenAI] Response status: #{response.code} #{response.message}"
     Rails.logger.info "[OpenAI] Response headers: #{response.to_hash.to_json}"
-    Rails.logger.info "[OpenAI] Response body: #{response.body}"
+    Rails.logger.debug { "[OpenAI] Response body: #{response.body}" }
   end
 end

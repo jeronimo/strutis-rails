@@ -37,35 +37,20 @@ class Conversation < ApplicationRecord
     OpenAiService.new(conversation_id: public_id, user_public_id: user.public_id)
   end
 
-  def context_window
-    OpenAiService.context_length(model)
-  end
-
   def context_usage_percent
-    window = context_window
-    return nil unless window.to_i.positive?
-
-    (context_tokens.to_f / window * 100).round
+    context_calculator.usage_percent
   end
 
   def compaction_needed?
-    window = context_window
-    window.to_i.positive? && context_tokens.to_f / window > COMPACT_THRESHOLD
+    context_calculator.compaction_needed?
   end
 
   def prompt_over_budget?
-    window = context_window
-    window.to_i.positive? && prompt_token_estimate / window.to_f > COMPACT_THRESHOLD
+    context_calculator.prompt_over_budget?
   end
 
   def prompt_token_estimate
-    entries = prompt_messages
-    content_chars = entries.sum { |entry| entry_content_chars(entry[:content]) }
-    (content_chars / ConversationCompactionService::CHARS_PER_TOKEN.to_f).ceil + entries.size * ConversationCompactionService::TEMPLATE_TOKENS_PER_MESSAGE
-  end
-
-  def entry_content_chars(content)
-    content.is_a?(Array) ? content.sum { |part| part[:text].to_s.length } : content.to_s.length
+    context_calculator.prompt_token_estimate
   end
 
   def compactable?
@@ -89,13 +74,7 @@ class Conversation < ApplicationRecord
   end
 
   def prompt_messages
-    active = messages.where(compacted_at: nil).where.not(role: 'compaction').where(queued: false).to_a
-    image_input = OpenAiService.supports_image_input?(model)
-    entries = active.select { |message| message.role == 'system' }.map(&:to_prompt_entry)
-    digest = compaction_digest if summary.present?
-    entries << { role: 'user', content: digest } if digest.present?
-    entries.concat(active.reject { |message| message.role == 'system' }.flat_map { |message| message.prompt_entries(image_input: image_input) })
-    entries
+    prompt_builder.build
   end
 
   def tool_call_names
@@ -108,16 +87,18 @@ class Conversation < ApplicationRecord
 
   private
 
+  def context_calculator
+    @context_calculator ||= ContextCalculator.new(self)
+  end
+
+  def prompt_builder
+    @prompt_builder ||= PromptBuilder.new(self)
+  end
+
   def build_tool_call_names
     source = messages.loaded? ? messages.to_a : messages.where(role: 'assistant').where.not(tool_calls: nil).load
     source
       .flat_map { |message| Array(message.tool_calls) }
       .to_h { |tool_call| [ tool_call['id'], tool_call.dig('function', 'name') ] }
-  end
-
-  def compaction_digest
-    template = Prompt.global('digest')
-    return '' if template.blank?
-    template.sub('{{summary}}', summary)
   end
 end

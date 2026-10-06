@@ -242,8 +242,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
     before do
       allow(OpenAiClient).to receive(:credentials).and_return({ host: 'localhost', port: 8080, key: 'test-key' })
       stub_const('OpenAiClient::RETRY_WAITS', [ 0 ])
-      OpenAiService.instance_variable_set(:@models, nil)
-      OpenAiService.instance_variable_set(:@models_fetched_at, nil)
+      Rails.cache.delete(ModelCatalog::CACHE_KEY)
       allow_any_instance_of(OpenAiService).to receive(:tools).and_return([])
       allow_any_instance_of(OpenAiService).to receive(:completion).and_call_original
       conversation.update!(context_tokens: 0)

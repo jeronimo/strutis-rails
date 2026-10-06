@@ -1,7 +1,4 @@
 class ConversationCompactionService
-  CHARS_PER_TOKEN = 4
-  TEMPLATE_TOKENS_PER_MESSAGE = 8
-
   def self.perform(conversation, openai, on_retry: nil)
     new(conversation, openai, on_retry:).perform
   end
@@ -37,10 +34,7 @@ class ConversationCompactionService
   private
 
   def record_context_tokens
-    entries = @conversation.prompt_messages
-    content_chars = entries.sum { |entry| @conversation.entry_content_chars(entry[:content]) }
-    tokens = (content_chars / CHARS_PER_TOKEN.to_f).ceil + entries.size * TEMPLATE_TOKENS_PER_MESSAGE
-    @conversation.update_column(:context_tokens, tokens)
+    @conversation.update_column(:context_tokens, @conversation.prompt_token_estimate)
   end
 
   def generate_summary(messages)

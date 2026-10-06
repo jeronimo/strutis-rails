@@ -197,56 +197,11 @@ class ConversationsController < ApplicationController
     render turbo_stream: turbo_stream.replace('conversation-error', partial: 'conversations/error', locals: { error: error }), status: status
   end
 
-  def chat_models
-    OpenAiService.models.select { |model| OpenAiService.supports_text_input?(model[:id]) && OpenAiService.visible?(model[:id]) }
-  end
-
-  def available_models
-    chat_models.map { |model| [ model[:display_name].presence || model[:id], model[:id] ] }
-  end
-
-  def model_metadata
-    chat_models.each_with_object({}) do |model, metadata|
-      kwargs = model[:chat_template_kwargs] || {}
-      metadata[model[:id]] = {
-        display_name: model[:display_name].presence || model[:id],
-        context_length: model[:context_length],
-        supports_image_input: OpenAiService.supports_image_input?(model[:id]),
-        supports_thinking: kwargs.key?(:enable_thinking),
-        default_thinking: kwargs[:enable_thinking] || false,
-        reasoning_effort_options: Array(kwargs[:reasoning_effort_options]),
-        default_reasoning_effort: kwargs[:reasoning_effort]
-      }
-    end
-  end
-
   def setup_conversation_model
-    @models = available_models
-    current = current_model
-    metadata = model_metadata
-    @model = {
-      id: current,
-      metadata:,
-      current_name: metadata[current]&.dig(:display_name) || current,
-      thinking: @conversation ? @conversation.thinking : metadata[current]&.fetch(:default_thinking, false),
-      supports_thinking: metadata[current][:supports_thinking],
-      reasoning_effort: @conversation ? (@conversation.reasoning_effort || metadata[current]&.dig(:default_reasoning_effort)) : metadata[current]&.dig(:default_reasoning_effort),
-      reasoning_effort_options: metadata[current]&.fetch(:reasoning_effort_options, []) || [],
-      stt_available: OpenAiService.stt_model.present?
-    }
-    @context = {
-      tokens: @conversation&.context_tokens || 0,
-      window: metadata[current]&.dig(:context_length) || 0,
-      percent: @conversation&.context_usage_percent || 0,
-      percent_display: format('%d%%', @conversation&.context_usage_percent || 0),
-      compact_threshold: Conversation::COMPACT_THRESHOLD
-    }
-  end
-
-  def current_model
-    ids = @models.map { |_, id| id }
-    return ids.first unless @conversation
-    ids.include?(@conversation.model) ? @conversation.model : ids.first
+    presenter = ConversationModelPresenter.new(@conversation)
+    @models = presenter.available_models
+    @model = presenter.model
+    @context = presenter.context
   end
 
   def render_conversation_created(conversation, user_message, new_conversation:)

@@ -4,8 +4,7 @@ RSpec.describe OpenAiService do
   before do
     allow(OpenAiClient).to receive(:credentials).and_return({ host: 'localhost', port: 8080, key: 'test-key' })
     stub_const('OpenAiClient::RETRY_WAITS', [ 0 ])
-    described_class.instance_variable_set(:@models, nil)
-    described_class.instance_variable_set(:@models_fetched_at, nil)
+    Rails.cache.delete(ModelCatalog::CACHE_KEY)
   end
 
   let(:tools) { [ { function: { name: 'web-search', parameters: { type: 'object' } }, endpoint: 'http://tools.local/search' } ] }
@@ -301,7 +300,7 @@ RSpec.describe OpenAiService do
       stub_request(:get, 'http://localhost:8080/v1/models').to_return(status: 200, body: '{"data":[{"id":"m1","context_length":100}]}')
       expect(described_class.models).to eq([ { id: 'm1', context_length: 100 } ])
 
-      described_class.instance_variable_set(:@models_fetched_at, Time.now - 700)
+      Rails.cache.write(ModelCatalog::CACHE_KEY, { data: [ { id: 'm1', context_length: 100 } ], fetched_at: Time.now - 700 })
       stub_request(:get, 'http://localhost:8080/v1/models').to_return(status: 500, body: '{"error":{"message":"down"}}')
 
       expect(described_class.models).to eq([ { id: 'm1', context_length: 100 } ])

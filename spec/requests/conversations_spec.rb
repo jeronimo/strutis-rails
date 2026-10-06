@@ -4,7 +4,7 @@ RSpec.describe 'Conversations', type: :request do
   let(:user) { User.create!(email: 'conversation-user@example.com', password: 'password123') }
 
   before do
-    allow(OpenAiService).to receive(:models).and_return([ { id: 'test-model', context_length: 1000, capabilities: { input: [ 'text' ] } } ])
+    allow(ModelCatalog).to receive(:models).and_return([ { id: 'test-model', context_length: 1000, capabilities: { input: [ 'text' ] } } ])
     sign_in_user(user)
   end
 
