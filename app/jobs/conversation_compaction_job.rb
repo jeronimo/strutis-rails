@@ -15,7 +15,7 @@ class ConversationCompactionJob < ApplicationJob
       if compacted
         ConversationChannel.broadcast_frame(@conversation, show_progress: false)
       else
-        @conversation.last_error = 'Compaction failed.'
+        @conversation.last_error = ConversationError::COMPACTION_FAILED
         @conversation.update_column(:last_error, @conversation.last_error)
         ConversationChannel.broadcast_frame(@conversation, show_progress: false)
       end

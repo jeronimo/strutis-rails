@@ -141,7 +141,7 @@ class ConversationCompletionJob < ApplicationJob
       @finalized = true
       @conversation.mark_unread!
       if result[:content].blank? && result[:reasoning].present?
-        @conversation.last_error = "The model stopped after thinking for #{format_duration(metrics[:latency_ms])} without producing a response."
+        @conversation.last_error = ConversationError.thinking_only(metrics[:latency_ms])
         @conversation.update_column(:last_error, @conversation.last_error)
       end
       broadcast_frame(show_progress: false)
@@ -165,13 +165,7 @@ class ConversationCompletionJob < ApplicationJob
   def finish_failed_turn
     return if @finalized
     record_unexecuted_tools
-    @conversation.last_error = if @stopped
-      'Stopped by user.'
-    elsif @failure.is_a?(OpenAiClient::Error) && OpenAiClient::RETRYABLE_STATUSES.include?(@failure.status)
-      'The service is temporarily unavailable. Please try again in a moment.'
-    else
-      'Something went wrong. Please try again.'
-    end
+    @conversation.last_error = ConversationError.from_failure(stopped: @stopped, failure: @failure)
     @conversation.update_column(:last_error, @conversation.last_error)
     @conversation.mark_unread!
     broadcast_frame(show_progress: false)
@@ -188,12 +182,5 @@ class ConversationCompletionJob < ApplicationJob
 
   def tool_call_ids
     @message.tool_calls.map { |tool_call| tool_call[:id] || tool_call['id'] }
-  end
-
-  def format_duration(ms)
-    seconds = ms.to_i / 1000
-    minutes = seconds / 60
-    seconds %= 60
-    minutes.positive? ? "#{minutes}m #{seconds}s" : "#{seconds}s"
   end
 end
