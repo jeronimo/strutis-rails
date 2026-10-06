@@ -1,0 +1,4 @@
+%span.alert.alert-warning.py-2.mb-0.chat-retry-status{ id: "conversation-progress-status-#{conversation.public_id}", data: { controller: 'retry-countdown', retry_countdown_seconds_value: wait } }
+  Retrying — attempt #{attempt} of #{max}, next try in
+  %span{ data: { retry_countdown_target: 'count' } }= wait
+  s

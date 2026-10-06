@@ -3,9 +3,7 @@ require 'rails_helper'
 RSpec.describe OpenAiService do
   before do
     allow(OpenAiClient).to receive(:credentials).and_return({ host: 'localhost', port: 8080, key: 'test-key' })
-    stub_const('OpenAiClient::MAX_RETRIES', 1)
-    stub_const('OpenAiClient::RETRY_INTERVAL', 0)
-    stub_const('OpenAiClient::RETRY_INTERVAL_STEP', 0)
+    stub_const('OpenAiClient::RETRY_WAITS', [ 0 ])
     described_class.instance_variable_set(:@models, nil)
     described_class.instance_variable_set(:@models_fetched_at, nil)
   end
@@ -224,6 +222,23 @@ RSpec.describe OpenAiService do
       result = described_class.new.completion([ { role: 'user', content: 'hi' } ], 'test-model')
 
       expect(result[:content]).to eq('hi')
+      expect(a_request(:post, 'http://localhost:8080/v1/chat/completions')).to have_been_made.times(2)
+    end
+
+    it 'excludes retry backoff from inference and latency timing' do
+      clock = 0.0
+      real_clock = Process.method(:clock_gettime)
+      allow(Process).to receive(:clock_gettime) { |id, *rest| id == Process::CLOCK_MONOTONIC ? clock : real_clock.call(id, *rest) }
+      allow_any_instance_of(OpenAiClient).to receive(:sleep) { |_, seconds| clock += seconds }
+      stub_const('OpenAiClient::RETRY_WAITS', [ 160 ])
+      stub_request(:post, 'http://localhost:8080/v1/chat/completions')
+        .to_raise(Errno::ECONNREFUSED).then
+        .to_return(status: 200, headers: { 'Content-Type' => 'text/event-stream' }, body: sse({ choices: [ { delta: { content: 'hi' } } ] }, '[DONE]'))
+
+      result = described_class.new.completion([ { role: 'user', content: 'hi' } ], 'test-model')
+
+      expect(result[:inference_ms]).to eq(0)
+      expect(result[:latency_ms]).to eq(0)
       expect(a_request(:post, 'http://localhost:8080/v1/chat/completions')).to have_been_made.times(2)
     end
   end

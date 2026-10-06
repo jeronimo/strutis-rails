@@ -4,3 +4,4 @@
       .progress-bar.w-50
     %a.btn.btn-outline-danger.btn-sm{ href: stop_conversation_path(conversation.public_id), 'data-turbo-method': 'post' }
       Stop
+  %span.small.text-muted{ id: "conversation-progress-status-#{conversation.public_id}" }

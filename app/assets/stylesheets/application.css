@@ -153,6 +153,15 @@
   margin-right: auto;
 }
 
+.chat-conversation .alert {
+  text-align: right;
+  padding: 0.5rem 1rem;
+}
+
+.chat-retry-status {
+  --bs-alert-color: var(--bs-body-color);
+}
+
 @media (min-width: 768px) {
   #conversation-form {
     left: 25%;

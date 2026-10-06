@@ -26,7 +26,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
 
     described_class.perform_now(conversation.id)
 
-    expect(ConversationCompactionService).to have_received(:perform).with(a_kind_of(Conversation), an_instance_of(OpenAiService))
+    expect(ConversationCompactionService).to have_received(:perform).with(a_kind_of(Conversation), an_instance_of(OpenAiService), on_retry: anything)
     expect(conversation.messages.reload.where(role: 'assistant').last&.content).to eq('hello')
   end
 
@@ -51,7 +51,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
 
     described_class.perform_now(conversation.id)
 
-    expect(conversation.reload.last_error).to eq('Completion failed: boom')
+    expect(conversation.reload.last_error).to eq('Something went wrong. Please try again.')
     expect(conversation.reload.unread).to be true
     expect(conversation.messages.where(role: 'assistant').last&.content).to eq('partial')
     expect(ConversationChannel).to have_received(:broadcast_frame).at_least(:once)
@@ -74,7 +74,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
 
     described_class.perform_now(conversation.id)
 
-    expect(conversation.reload.last_error).to eq('Completion failed: boom')
+    expect(conversation.reload.last_error).to eq('Something went wrong. Please try again.')
     tool_message = conversation.messages.where(role: 'tool').last
     expect(tool_message.tool_call_id).to eq('call_1')
     expect(tool_message.content).to eq('Tool not executed: boom')
@@ -230,9 +230,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
   context 'with real SSE streaming (no completion stub)' do
     before do
       allow(OpenAiClient).to receive(:credentials).and_return({ host: 'localhost', port: 8080, key: 'test-key' })
-      stub_const('OpenAiClient::MAX_RETRIES', 1)
-      stub_const('OpenAiClient::RETRY_INTERVAL', 0)
-      stub_const('OpenAiClient::RETRY_INTERVAL_STEP', 0)
+      stub_const('OpenAiClient::RETRY_WAITS', [ 0 ])
       OpenAiService.instance_variable_set(:@models, nil)
       OpenAiService.instance_variable_set(:@models_fetched_at, nil)
       allow_any_instance_of(OpenAiService).to receive(:tools).and_return([])

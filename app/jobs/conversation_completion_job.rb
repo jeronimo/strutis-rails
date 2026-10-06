@@ -15,6 +15,7 @@ class ConversationCompletionJob < ApplicationJob
     @failure = nil
     @stopped = false
     @conversation.update_column(:last_error, nil)
+    broadcast_frame(show_progress: true)
     begin
       run_completion
     rescue StandardError => e
@@ -46,7 +47,7 @@ class ConversationCompletionJob < ApplicationJob
   end
 
   def run_completion
-    tools = @openai.tools
+    tools = @openai.tools(on_retry: method(:notify_retry))
     metrics = { prompt_tokens: 0, completion_tokens: 0, reasoning_tokens: 0, latency_ms: 0, inference_ms: 0 }
     turns = 0
     loop do
@@ -78,7 +79,7 @@ class ConversationCompletionJob < ApplicationJob
     @message = nil
     result = @openai.completion(@conversation.prompt_messages, @conversation.model, tools: tools,
       chat_template_kwargs: @conversation.chat_template_kwargs,
-      should_stop: -> { @signal.stopped? }) do |delta|
+      should_stop: -> { @signal.stopped? }, on_retry: method(:notify_retry)) do |delta|
       if @message.nil?
         @message = @conversation.messages.create!(role: 'assistant', content: delta, model: @conversation.model)
         broadcast_frame(show_progress: false)
@@ -111,7 +112,7 @@ class ConversationCompletionJob < ApplicationJob
   end
 
   def compact_conversation
-    ConversationCompactionService.perform(@conversation, @openai)
+    ConversationCompactionService.perform(@conversation, @openai, on_retry: method(:notify_retry))
   end
 
   def record_context_tokens(result)
@@ -157,15 +158,19 @@ class ConversationCompletionJob < ApplicationJob
       html: ERB::Util.html_escape(delta)
   end
 
+  def notify_retry(attempt, max, wait)
+    ConversationChannel.broadcast_retry(@conversation, attempt:, max:, wait:)
+  end
+
   def finish_failed_turn
     return if @finalized
     record_unexecuted_tools
     @conversation.last_error = if @stopped
       'Stopped by user.'
-    elsif @failure
-      "Completion failed: #{@failure.message}"
+    elsif @failure.is_a?(OpenAiClient::Error) && OpenAiClient::RETRYABLE_STATUSES.include?(@failure.status)
+      'The service is temporarily unavailable. Please try again in a moment.'
     else
-      'Completion failed. Please try again.'
+      'Something went wrong. Please try again.'
     end
     @conversation.update_column(:last_error, @conversation.last_error)
     mark_unread unless @stopped

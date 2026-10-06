@@ -59,15 +59,15 @@ class OpenAiService
     @client = OpenAiClient.new(conversation_id: conversation_id, user_public_id: user_public_id)
   end
 
-  def tools
-    client.get('/v1/tools')[:data] || []
+  def tools(on_retry: nil)
+    client.get('/v1/tools', on_retry: on_retry)[:data] || []
   end
 
   def transcribe(audio_file, model)
     client.post_multipart('/v1/audio/transcriptions', model, audio_file)[:text].to_s
   end
 
-  def completion(messages, model, tools: nil, chat_template_kwargs: nil, should_stop: nil)
+  def completion(messages, model, tools: nil, chat_template_kwargs: nil, should_stop: nil, on_retry: nil)
     body = { model: model, messages: messages, stream: true, stream_options: { include_usage: true } }
     body[:conversation_id] = @conversation_id if @conversation_id
     body[:tools] = tools.map { |tool| tool.except(:endpoint).tap { |t| t[:function] = t[:function].merge(strict: true) if t[:function].is_a?(Hash) } } if tools.present?
@@ -80,7 +80,7 @@ class OpenAiService
     tool_calls = {}
     stopped = false
     begin
-      stream_request(body, timing, usage, should_stop) do |delta|
+      stream_request(body, timing, usage, should_stop, on_retry) do |delta|
         if delta[:content] && !delta[:content].empty?
           content << delta[:content]
           yield delta[:content] if block_given?
@@ -129,12 +129,11 @@ class OpenAiService
 
   private
 
-  def stream_request(body, timing, usage, should_stop)
-    start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  def stream_request(body, timing, usage, should_stop, on_retry)
     first_content = nil
     buffer = +''
 
-    client.post_stream('/v1/chat/completions', body, should_stop:) do |chunk|
+    client.post_stream('/v1/chat/completions', body, should_stop:, on_retry:, timing:) do |chunk|
       buffer << chunk
       buffer.gsub!("\r\n", "\n")
       while (separator = buffer.index("\n\n"))
@@ -156,8 +155,8 @@ class OpenAiService
 
     finish = Process.clock_gettime(Process::CLOCK_MONOTONIC)
     first_content ||= finish
-    timing[:latency_ms] = ms(finish - start)
-    timing[:inference_ms] = ms(first_content - start)
+    timing[:latency_ms] = ms(finish - timing[:start])
+    timing[:inference_ms] = ms(first_content - timing[:start])
   end
 
   def accumulate_tool_calls(tool_calls, delta_tool_calls)

@@ -9,9 +9,7 @@ class OpenAiClient
 
   OPEN_TIMEOUT = 5.seconds
   READ_TIMEOUT = 30.seconds
-  MAX_RETRIES = 10
-  RETRY_INTERVAL = 3.seconds
-  RETRY_INTERVAL_STEP = 3.seconds
+  RETRY_WAITS = [ 5, 10, 20, 40, 80 ].freeze
   STREAM_IDLE_TIMEOUT = 120.seconds
   STREAM_MAX_DURATION = 240.seconds
   TOOL_TIMEOUT = 120.seconds
@@ -49,8 +47,8 @@ class OpenAiClient
     @user_public_id = user_public_id
   end
 
-  def get(path, retries: nil)
-    with_retries(retries:) { exchange_json('GET', path, nil) }
+  def get(path, retries: nil, on_retry: nil)
+    with_retries(retries:, on_retry:) { exchange_json('GET', path, nil) }
   end
 
   def post(path, body)
@@ -61,10 +59,10 @@ class OpenAiClient
     with_retries { exchange_multipart(path, model, audio_file) }
   end
 
-  def post_stream(path, body, should_stop: nil)
+  def post_stream(path, body, should_stop: nil, on_retry: nil, timing: nil)
     yielded = false
-    with_retries(should_stop:, retryable: -> { !yielded }) do
-      perform_stream(path, body, should_stop) do |chunk|
+    with_retries(should_stop:, retryable: -> { !yielded }, on_retry:) do
+      perform_stream(path, body, should_stop, timing) do |chunk|
         yielded = true
         yield chunk
       end
@@ -84,16 +82,18 @@ class OpenAiClient
 
   private
 
-  def with_retries(retries: nil, should_stop: nil, retryable: nil)
-    max = retries || MAX_RETRIES
+  def with_retries(retries: nil, should_stop: nil, retryable: nil, on_retry: nil)
+    max = retries || RETRY_WAITS.length
     attempt = 0
     begin
       attempt += 1
       yield
     rescue *RETRYABLE_EXCEPTIONS, Error => e
       raise unless retriable?(e) && attempt <= max && !should_stop&.call && (retryable.nil? || retryable.call)
-      Rails.logger.warn "[OpenAI] Attempt #{attempt} failed (#{e.class}: #{e.message}), retrying"
-      sleep(RETRY_INTERVAL + (attempt - 1) * RETRY_INTERVAL_STEP)
+      wait = RETRY_WAITS[attempt - 1]
+      Rails.logger.warn "[OpenAI] Attempt #{attempt} failed (#{e.class}: #{e.message}), retrying in #{wait}s"
+      on_retry&.call(attempt, max, wait)
+      sleep(wait)
       retry
     end
   end
@@ -126,13 +126,14 @@ class OpenAiClient
     JSON.parse(response.body, symbolize_names: true)
   end
 
-  def perform_stream(path, body, should_stop)
+  def perform_stream(path, body, should_stop, timing)
     uri = URI("http://#{self.class.host}:#{self.class.port}#{path}")
     http, request = build_request('POST', uri, body)
     http.read_timeout = STREAM_IDLE_TIMEOUT
     log_request(request, uri, body)
 
     start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    timing[:start] = start if timing
     watchdog = should_stop ? watch_stop(http, should_stop) : nil
 
     begin

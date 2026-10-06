@@ -21,7 +21,7 @@ RSpec.describe ConversationCompactionJob, type: :job do
 
     described_class.perform_now(conversation.id)
 
-    expect(ConversationCompactionService).to have_received(:perform).with(conversation, an_instance_of(OpenAiService))
+    expect(ConversationCompactionService).to have_received(:perform).with(conversation, an_instance_of(OpenAiService), on_retry: anything)
     expect(ConversationChannel).to have_received(:broadcast_frame).with(conversation, show_progress: false)
     expect(conversation.reload.last_error).to be_nil
   end

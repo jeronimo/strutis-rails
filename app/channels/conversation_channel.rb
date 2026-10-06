@@ -16,6 +16,13 @@ class ConversationChannel < ApplicationCable::Channel
     broadcast_replace_to conversation, target: 'conversation-drawer-title', html: title
   end
 
+  def self.broadcast_retry(conversation, attempt:, max:, wait:)
+    broadcast_replace_to conversation,
+      target: "conversation-progress-status-#{conversation.public_id}",
+      partial: 'conversations/retry_status',
+      locals: { conversation:, attempt:, max:, wait: }
+  end
+
   def subscribed
     @conversation = current_user&.conversations&.find_by(public_id: params[:public_id])
 

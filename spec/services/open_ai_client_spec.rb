@@ -3,9 +3,7 @@ require 'rails_helper'
 RSpec.describe OpenAiClient do
   before do
     allow(described_class).to receive(:credentials).and_return({ host: 'localhost', port: 8080, key: 'test-key' })
-    stub_const('OpenAiClient::MAX_RETRIES', 1)
-    stub_const('OpenAiClient::RETRY_INTERVAL', 0)
-    stub_const('OpenAiClient::RETRY_INTERVAL_STEP', 0)
+    stub_const('OpenAiClient::RETRY_WAITS', [ 0 ])
   end
 
   describe 'retries' do
@@ -40,10 +38,8 @@ RSpec.describe OpenAiClient do
       expect(a_request(:get, 'http://localhost:8080/v1/tools')).to have_been_made.times(1)
     end
 
-    it 'increases the wait between retries by the configured step' do
-      stub_const('OpenAiClient::MAX_RETRIES', 2)
-      stub_const('OpenAiClient::RETRY_INTERVAL', 3)
-      stub_const('OpenAiClient::RETRY_INTERVAL_STEP', 3)
+    it 'waits follow the configured retry schedule' do
+      stub_const('OpenAiClient::RETRY_WAITS', [ 3, 6 ])
       client = described_class.new
       waits = []
       allow(client).to receive(:sleep) { |seconds| waits << seconds }
