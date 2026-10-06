@@ -139,7 +139,7 @@ class ConversationCompletionJob < ApplicationJob
         prompt_tokens: metrics[:prompt_tokens], completion_tokens: metrics[:completion_tokens],
         reasoning_tokens: metrics[:reasoning_tokens])
       @finalized = true
-      mark_unread
+      @conversation.mark_unread!
       if result[:content].blank? && result[:reasoning].present?
         @conversation.last_error = "The model stopped after thinking for #{format_duration(metrics[:latency_ms])} without producing a response."
         @conversation.update_column(:last_error, @conversation.last_error)
@@ -173,13 +173,8 @@ class ConversationCompletionJob < ApplicationJob
       'Something went wrong. Please try again.'
     end
     @conversation.update_column(:last_error, @conversation.last_error)
-    mark_unread unless @stopped
+    @conversation.mark_unread!
     broadcast_frame(show_progress: false)
-  end
-
-  def mark_unread
-    @conversation.update_column(:unread, true)
-    UserChannel.broadcast_unread(@conversation, unread: true)
   end
 
   def record_unexecuted_tools

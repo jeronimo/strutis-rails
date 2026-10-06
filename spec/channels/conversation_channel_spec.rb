@@ -34,4 +34,14 @@ RSpec.describe ConversationChannel, type: :channel do
     expect { perform :read }.not_to raise_error
     expect(conversation.reload.unread).to be false
   end
+
+  it 'counts the conversation as viewed while subscribed and not viewed after unsubscribe' do
+    Rails.cache.delete("conversation_presence:viewing:#{conversation.id}")
+
+    subscribe public_id: conversation.public_id
+    expect(ConversationPresence.viewing?(conversation.id)).to be true
+
+    unsubscribe
+    expect(ConversationPresence.viewing?(conversation.id)).to be false
+  end
 end

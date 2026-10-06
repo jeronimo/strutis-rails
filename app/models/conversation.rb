@@ -21,6 +21,18 @@ class Conversation < ApplicationRecord
     update_columns(deleted_at: nil)
   end
 
+  def mark_read!
+    return unless unread?
+    update_column(:unread, false)
+    UserChannel.broadcast_unread(self, unread: false)
+  end
+
+  def mark_unread!
+    return if ConversationPresence.viewing?(id)
+    update_column(:unread, true)
+    UserChannel.broadcast_unread(self, unread: true)
+  end
+
   def open_ai_service
     OpenAiService.new(conversation_id: public_id, user_public_id: user.public_id)
   end

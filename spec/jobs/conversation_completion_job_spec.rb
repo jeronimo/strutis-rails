@@ -12,6 +12,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
     allow(OpenAiService).to receive(:supports_image_input?).and_return(false)
     allow_any_instance_of(OpenAiService).to receive(:tools).and_return([])
     allow(ConversationChannel).to receive(:broadcast_frame)
+    allow(ConversationPresence).to receive(:viewing?).and_return(false)
     allow_any_instance_of(OpenAiService).to receive(:completion) do |_messages, _model, **_options, &block|
       block&.call('hello')
       { content: 'hello', tool_calls: [], latency_ms: 1, inference_ms: 1, prompt_tokens: 10, completion_tokens: 2, reasoning_tokens: 0 }
@@ -106,7 +107,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
     expect(assistant_messages.last.latency_ms).to eq(1500)
   end
 
-  it 'stops the run when a stop is requested' do
+  it 'stops the run when a stop is requested and marks it unread because nobody is viewing' do
     conversation.update!(context_tokens: 0)
     conversation.messages.create!(role: 'user', content: 'new')
     CompletionSignal.request_stop(conversation.id)
@@ -114,6 +115,16 @@ RSpec.describe ConversationCompletionJob, type: :job do
     described_class.perform_now(conversation.id)
 
     expect(conversation.reload.last_error).to eq('Stopped by user.')
+    expect(conversation.reload.unread).to be true
+  end
+
+  it 'does not mark the conversation unread while it is being viewed' do
+    conversation.update!(context_tokens: 0)
+    conversation.messages.create!(role: 'user', content: 'new')
+    allow(ConversationPresence).to receive(:viewing?).with(conversation.id).and_return(true)
+
+    described_class.perform_now(conversation.id)
+
     expect(conversation.reload.unread).to be false
   end
 

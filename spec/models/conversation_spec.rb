@@ -178,4 +178,46 @@ RSpec.describe Conversation, type: :model do
       expect(Conversation.exists?(conversation.id)).to be true
     end
   end
+
+  describe '#mark_unread!' do
+    it 'marks and broadcasts when nobody is viewing' do
+      allow(ConversationPresence).to receive(:viewing?).with(conversation.id).and_return(false)
+      allow(UserChannel).to receive(:broadcast_unread)
+
+      conversation.mark_unread!
+
+      expect(conversation.reload.unread).to be true
+      expect(UserChannel).to have_received(:broadcast_unread).with(conversation, unread: true)
+    end
+
+    it 'does nothing while the conversation is being viewed' do
+      allow(ConversationPresence).to receive(:viewing?).with(conversation.id).and_return(true)
+      allow(UserChannel).to receive(:broadcast_unread)
+
+      conversation.mark_unread!
+
+      expect(conversation.reload.unread).to be false
+      expect(UserChannel).not_to have_received(:broadcast_unread)
+    end
+  end
+
+  describe '#mark_read!' do
+    it 'is a no-op when already read' do
+      allow(UserChannel).to receive(:broadcast_unread)
+
+      conversation.mark_read!
+
+      expect(UserChannel).not_to have_received(:broadcast_unread)
+    end
+
+    it 'clears and broadcasts when unread' do
+      conversation.update_column(:unread, true)
+      allow(UserChannel).to receive(:broadcast_unread)
+
+      conversation.mark_read!
+
+      expect(conversation.reload.unread).to be false
+      expect(UserChannel).to have_received(:broadcast_unread).with(conversation, unread: false)
+    end
+  end
 end

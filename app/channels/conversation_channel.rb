@@ -29,7 +29,9 @@ class ConversationChannel < ApplicationCable::Channel
     if @conversation
       @stream_name = self.class.send(:stream_name_from, @conversation)
       stream_from @stream_name
-      mark_read
+      @presence_token = SecureRandom.hex(16)
+      ConversationPresence.new(@conversation.id).start!(@presence_token)
+      @conversation.mark_read!
       Rails.logger.info "ConversationChannel subscribed to #{@stream_name}"
     else
       reject
@@ -37,18 +39,11 @@ class ConversationChannel < ApplicationCable::Channel
   end
 
   def read
-    mark_read
+    @conversation&.reload&.mark_read!
   end
 
   def unsubscribed
+    ConversationPresence.new(@conversation.id).finish!(@presence_token) if @conversation && @presence_token
     Rails.logger.info "ConversationChannel unsubscribed from #{@stream_name}"
-  end
-
-  private
-
-  def mark_read
-    return unless @conversation&.reload&.unread?
-    @conversation.update_column(:unread, false)
-    UserChannel.broadcast_unread(@conversation, unread: false)
   end
 end

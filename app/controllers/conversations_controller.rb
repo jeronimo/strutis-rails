@@ -126,7 +126,7 @@ class ConversationsController < ApplicationController
   private
 
   def mark_conversation_read
-    @conversation.update_column(:unread, false)
+    @conversation.mark_read!
     @conversations.find { |c| c.id == @conversation.id }&.unread = false
   end
 

@@ -19,6 +19,7 @@ class ConversationCompactionJob < ApplicationJob
         @conversation.update_column(:last_error, @conversation.last_error)
         ConversationChannel.broadcast_frame(@conversation, show_progress: false)
       end
+      @conversation.mark_unread!
     end
   end
 end
