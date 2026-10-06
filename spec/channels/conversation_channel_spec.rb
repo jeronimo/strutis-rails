@@ -44,4 +44,14 @@ RSpec.describe ConversationChannel, type: :channel do
     unsubscribe
     expect(ConversationPresence.viewing?(conversation.id)).to be false
   end
+
+  it 'renders the last error inside the messages frame' do
+    allow(OpenAiService).to receive(:context_length).with('test-model').and_return(100)
+    conversation.update_column(:last_error, 'Boom happened')
+
+    ConversationChannel.broadcast_frame(conversation, show_progress: false)
+
+    message = ActiveSupport::JSON.decode(broadcasts(conversation.to_gid_param).last).to_s
+    expect(message).to include('Boom happened')
+  end
 end
