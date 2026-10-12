@@ -8,6 +8,7 @@ class Conversation < ApplicationRecord
 
   default_scope { where(deleted_at: nil) }
   scope :with_deleted, -> { unscope(where: :deleted_at) }
+  scope :with_message_attachments, -> { includes(messages: { attachments_attachments: :blob }) }
 
   before_create { self.public_id = SecureRandom.hex(16) }
 

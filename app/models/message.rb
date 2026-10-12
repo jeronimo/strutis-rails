@@ -2,6 +2,8 @@ class Message < ApplicationRecord
   belongs_to :conversation
   has_many_attached :attachments
 
+  scope :with_attachments, -> { includes(attachments_attachments: :blob) }
+
   after_create :reset_conversation_tool_call_cache
   after_update :reset_conversation_tool_call_cache
   after_destroy :reset_conversation_tool_call_cache

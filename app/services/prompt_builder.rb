@@ -4,7 +4,7 @@ class PromptBuilder
   end
 
   def build
-    active = @conversation.messages.where(compacted_at: nil).where.not(role: 'compaction').where(queued: false).to_a
+    active = @conversation.messages.where(compacted_at: nil).where.not(role: 'compaction').where(queued: false).with_attachments.to_a
     image_input = OpenAiService.supports_image_input?(@conversation.model)
     entries = active.select { |message| message.role == 'system' }.map(&:to_prompt_entry)
     digest = compaction_digest
