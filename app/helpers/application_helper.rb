@@ -18,6 +18,7 @@ module ApplicationHelper
     parts = []
     parts << "thinking #{format_ms(inference)}" if inference.positive?
     parts << "transport #{format_ms(transport)}" if transport.positive?
+    parts << "#{format('%.1f', message.completion_tokens * 1000.0 / message.latency_ms)} tok/s" if message.completion_tokens&.positive? && message.latency_ms&.positive?
     parts.empty? ? format_ms(message.latency_ms) : "#{parts.join(' · ')} — #{format_ms(message.latency_ms)}"
   end
 
