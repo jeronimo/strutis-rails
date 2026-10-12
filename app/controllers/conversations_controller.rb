@@ -33,7 +33,7 @@ class ConversationsController < ApplicationController
 
     blobs = upload_attachments(attachments)
     content = message.presence || upload_note(blobs)
-    conversation = find_or_create_conversation(public_id, message.presence || blobs.first&.filename&.to_s || 'Attachment', model)
+    conversation = find_or_create_conversation(public_id, content, model)
 
     if conversation.nil?
       render_conversation_error('Conversation not found.', :not_found)
@@ -186,7 +186,7 @@ class ConversationsController < ApplicationController
       current_user.conversations.find_by(public_id: public_id)
     else
       folder_id = valid_folder_id(create_params[:folder_id])
-      conversation = current_user.conversations.create!(title: title[0, Conversation::TITLE_PLACEHOLDER_LENGTH], model: model, folder_id: folder_id, position: first_tree_position(folder_id))
+      conversation = current_user.conversations.create!(title: Conversation.title_placeholder(title), model: model, folder_id: folder_id, position: first_tree_position(folder_id))
       system_content = current_user.effective_prompt('system')
       conversation.messages.create!(role: 'system', content: system_content, model: model) if system_content.present?
       conversation

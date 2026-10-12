@@ -14,6 +14,13 @@ class Conversation < ApplicationRecord
 
   validates :model, presence: true
 
+  def self.title_placeholder(text)
+    text = text.to_s.strip
+    return text if text.length <= TITLE_PLACEHOLDER_LENGTH
+    truncated = text[/\A.{1,#{TITLE_PLACEHOLDER_LENGTH}}(?=\s)/m] || text[0, TITLE_PLACEHOLDER_LENGTH]
+    truncated.sub(/[,:'"-]+\z/, '')
+  end
+
   def destroy
     update_columns(deleted_at: Time.current)
   end
@@ -62,8 +69,8 @@ class Conversation < ApplicationRecord
 
   def title_generation_needed?
     first_user_message = messages.where(role: 'user').first
-    return false if first_user_message.blank? || first_user_message.content.blank?
-    title == first_user_message.content[0, TITLE_PLACEHOLDER_LENGTH]
+    return false if first_user_message.blank?
+    title == self.class.title_placeholder(first_user_message.content)
   end
 
   def chat_template_kwargs

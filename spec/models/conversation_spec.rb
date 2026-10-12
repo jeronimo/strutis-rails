@@ -157,6 +157,56 @@ RSpec.describe Conversation, type: :model do
     end
   end
 
+  describe '.title_placeholder' do
+    it 'drops the partial last word and the punctuation left behind' do
+      text = 'find me where to buy Sol. Minoxidili 5% in lithuania, confirming'
+      expect(described_class.title_placeholder(text)).to eq('find me where to buy Sol. Minoxidili 5% in lithuania')
+    end
+
+    it 'returns text unchanged when it fits within the placeholder length' do
+      expect(described_class.title_placeholder('short title')).to eq('short title')
+    end
+
+    it 'keeps the full cut when the boundary lands on whitespace' do
+      expect(described_class.title_placeholder("#{'a' * 60} tail")).to eq('a' * 60)
+    end
+
+    it 'strips punctuation left at the cut boundary' do
+      expect(described_class.title_placeholder("#{'x' * 58}, tail")).to eq('x' * 58)
+    end
+
+    it 'hard-cuts a single word longer than the placeholder length' do
+      expect(described_class.title_placeholder('A' * 100)).to eq('A' * 60)
+    end
+  end
+
+  describe '#title_generation_needed?' do
+    it 'is false without a user message' do
+      expect(conversation.title_generation_needed?).to be false
+    end
+
+    it 'is true when the title still matches the first user message placeholder' do
+      content = 'find me where to buy Sol. Minoxidili 5% in lithuania, confirming'
+      conversation.update!(title: described_class.title_placeholder(content))
+      conversation.messages.create!(role: 'user', content: content)
+      expect(conversation.title_generation_needed?).to be true
+    end
+
+    it 'is true for an attachment-only message while the title is still the upload note' do
+      conversation.update!(title: 'Uploaded file:')
+      message = conversation.messages.create!(role: 'user', content: 'Uploaded file:')
+      blob = ActiveStorage::Blob.create_and_upload!(io: StringIO.new('pdf'), filename: 'minoxidil.pdf', content_type: 'application/pdf')
+      message.attachments.attach(blob)
+      expect(conversation.title_generation_needed?).to be true
+    end
+
+    it 'is false once the title differs from the placeholder' do
+      conversation.update!(title: 'Generated title')
+      conversation.messages.create!(role: 'user', content: 'some question')
+      expect(conversation.title_generation_needed?).to be false
+    end
+  end
+
   describe 'soft delete' do
     it 'sets deleted_at, hides the conversation, and keeps its messages' do
       message = conversation.messages.create!(role: 'user', content: 'hello')
