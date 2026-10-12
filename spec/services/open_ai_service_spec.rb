@@ -257,16 +257,19 @@ RSpec.describe OpenAiService do
   end
 
   describe '.models' do
-    it 'fetches and caches the model list' do
+    it 'serves cached models and refreshes in the background' do
       stub_request(:get, 'http://localhost:8080/v1/models').to_return(status: 200, body: '{"data":[{"id":"m1","context_length":100}]}')
 
-      expect(described_class.models).to eq([ { id: 'm1', context_length: 100 } ])
+      expect(described_class.models).to eq([])
+      expect(ModelRefreshJob).to have_been_enqueued
+      perform_enqueued_jobs
       expect(described_class.models).to eq([ { id: 'm1', context_length: 100 } ])
       expect(a_request(:get, 'http://localhost:8080/v1/models')).to have_been_made.once
     end
 
     it 'looks up model metadata' do
       stub_request(:get, 'http://localhost:8080/v1/models').to_return(status: 200, body: '{"data":[{"id":"m1","context_length":100,"chat_template_kwargs":{"enable_thinking":true}}]}')
+      perform_enqueued_jobs(only: ModelRefreshJob) { described_class.models }
 
       expect(described_class.context_length('m1')).to eq(100)
       expect(described_class.chat_template_kwargs('m1')).to eq({ enable_thinking: true })
@@ -275,6 +278,7 @@ RSpec.describe OpenAiService do
 
     it 'reports image input support from model capabilities' do
       stub_request(:get, 'http://localhost:8080/v1/models').to_return(status: 200, body: '{"data":[{"id":"m1","capabilities":{"input":["text","image"]}},{"id":"m2","capabilities":{"input":["text"]}}]}')
+      perform_enqueued_jobs(only: ModelRefreshJob) { described_class.models }
 
       expect(described_class.supports_image_input?('m1')).to be true
       expect(described_class.supports_image_input?('m2')).to be false
@@ -283,6 +287,7 @@ RSpec.describe OpenAiService do
 
     it 'reports text and audio input support from model capabilities' do
       stub_request(:get, 'http://localhost:8080/v1/models').to_return(status: 200, body: '{"data":[{"id":"m1","capabilities":{"input":["text","image"]}},{"id":"m2","capabilities":{"input":["audio"]}}]}')
+      perform_enqueued_jobs(only: ModelRefreshJob) { described_class.models }
 
       expect(described_class.supports_text_input?('m1')).to be true
       expect(described_class.supports_text_input?('m2')).to be false
@@ -292,24 +297,24 @@ RSpec.describe OpenAiService do
 
     it 'finds the stt model by audio input capability' do
       stub_request(:get, 'http://localhost:8080/v1/models').to_return(status: 200, body: '{"data":[{"id":"m1","capabilities":{"input":["text"]}},{"id":"m2","capabilities":{"input":["audio"]}}]}')
+      perform_enqueued_jobs(only: ModelRefreshJob) { described_class.models }
 
       expect(described_class.stt_model[:id]).to eq('m2')
     end
 
     it 'serves the stale model list when a refresh fails' do
-      stub_request(:get, 'http://localhost:8080/v1/models').to_return(status: 200, body: '{"data":[{"id":"m1","context_length":100}]}')
-      expect(described_class.models).to eq([ { id: 'm1', context_length: 100 } ])
-
       Rails.cache.write(ModelCatalog::CACHE_KEY, { data: [ { id: 'm1', context_length: 100 } ], fetched_at: Time.now - 700 })
       stub_request(:get, 'http://localhost:8080/v1/models').to_return(status: 500, body: '{"error":{"message":"down"}}')
 
       expect(described_class.models).to eq([ { id: 'm1', context_length: 100 } ])
+      expect { perform_enqueued_jobs }.to raise_error(OpenAiClient::Error)
+      expect(described_class.models).to eq([ { id: 'm1', context_length: 100 } ])
     end
 
-    it 'raises when the model list was never fetched and the service is down' do
+    it 'serves an empty list when the model list was never fetched and the service is down' do
       stub_request(:get, 'http://localhost:8080/v1/models').to_raise(Errno::ECONNREFUSED)
 
-      expect { described_class.models }.to raise_error(Errno::ECONNREFUSED)
+      expect(described_class.models).to eq([])
     end
   end
 

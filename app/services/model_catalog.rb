@@ -4,17 +4,8 @@ class ModelCatalog
 
   def self.models
     cached = Rails.cache.read(CACHE_KEY)
-    return cached[:data] if cached && Time.now - cached[:fetched_at] <= TTL
-
-    begin
-      data = OpenAiClient.new.get('/v1/models', retries: 1)[:data] || []
-      Rails.cache.write(CACHE_KEY, { data:, fetched_at: Time.now })
-      data
-    rescue OpenAiClient::Error, *OpenAiClient::RETRYABLE_EXCEPTIONS
-      Rails.logger.warn '[OpenAI] Models refresh failed, serving stale list' if cached
-      raise if cached.nil?
-      cached[:data]
-    end
+    ModelRefreshJob.perform_later if cached.nil? || Time.now - cached[:fetched_at] > TTL
+    cached&.fetch(:data) || []
   end
 
   def self.model(model_id)

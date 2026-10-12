@@ -9,6 +9,7 @@ RSpec.describe 'Users::Usages', type: :request do
     Rails.cache.delete(ModelCatalog::CACHE_KEY)
     stub_request(:get, 'http://localhost:8080/v1/models')
       .to_return(status: 200, body: { data: [ { id: 'model-a', display_name: 'Model A' }, { id: 'model-b', display_name: 'Model B' } ] }.to_json)
+    perform_enqueued_jobs(only: ModelRefreshJob) { ModelCatalog.models }
     sign_in_user(user)
   end
 

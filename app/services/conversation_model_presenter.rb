@@ -15,7 +15,7 @@ class ConversationModelPresenter
       metadata:,
       current_name: metadata[current]&.dig(:display_name) || current,
       thinking: @conversation ? @conversation.thinking : metadata[current]&.fetch(:default_thinking, false),
-      supports_thinking: metadata[current][:supports_thinking],
+      supports_thinking: metadata[current]&.dig(:supports_thinking) || false,
       reasoning_effort: @conversation ? (@conversation.reasoning_effort || metadata[current]&.dig(:default_reasoning_effort)) : metadata[current]&.dig(:default_reasoning_effort),
       reasoning_effort_options: metadata[current]&.fetch(:reasoning_effort_options, []) || [],
       stt_available: ModelCatalog.stt_model.present?
