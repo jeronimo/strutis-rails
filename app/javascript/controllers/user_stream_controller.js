@@ -1,12 +1,12 @@
 import { Controller } from "@hotwired/stimulus"
-import { consumer } from "controllers/conversation_stream"
+import { consumer, readBadgeIfWatched } from "controllers/conversation_stream"
 
 export default class extends Controller {
   connect() {
     this.subscription ||= consumer.subscriptions.create({ channel: "UserChannel" }, {
       received: (data) => {
         Turbo.renderStreamMessage(data)
-        this.chimeIfUnread(data)
+        if (!readBadgeIfWatched(data)) this.chimeIfUnread(data)
       }
     })
     this._onVisibility = () => this.flushPendingChime()

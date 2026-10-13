@@ -3,26 +3,6 @@ class ConversationChannel < ApplicationCable::Channel
   extend Turbo::Streams::StreamName
   include Turbo::Streams::StreamName::ClassMethods
 
-  @viewing_counts = Hash.new(0)
-  @viewing_lock = Mutex.new
-
-  class << self
-    def viewing?(conversation_id)
-      @viewing_lock.synchronize { @viewing_counts[conversation_id] > 0 }
-    end
-
-    def record_view(conversation_id)
-      @viewing_lock.synchronize { @viewing_counts[conversation_id] += 1 }
-    end
-
-    def forget_view(conversation_id)
-      @viewing_lock.synchronize do
-        @viewing_counts[conversation_id] -= 1
-        @viewing_counts.delete(conversation_id) if @viewing_counts[conversation_id] <= 0
-      end
-    end
-  end
-
   def self.broadcast_frame(conversation, show_progress:)
     broadcast_replace_to conversation,
       target: "messages-#{conversation.public_id}",
@@ -74,9 +54,8 @@ class ConversationChannel < ApplicationCable::Channel
     if @conversation
       @stream_name = self.class.send(:stream_name_from, @conversation)
       stream_from @stream_name
-      @viewing = true
-      self.class.record_view(@conversation.id)
       @conversation.mark_read!
+      self.class.broadcast_progress(@conversation, active: @conversation.completion_alive?)
       Rails.logger.info "ConversationChannel subscribed to #{@stream_name}"
     else
       reject
@@ -85,25 +64,10 @@ class ConversationChannel < ApplicationCable::Channel
 
   def read
     return unless @conversation
-    present
     @conversation.reload.mark_read!
   end
 
-  def present
-    return unless @conversation
-    return if @viewing
-    @viewing = true
-    self.class.record_view(@conversation.id)
-  end
-
-  def away
-    return unless @conversation && @viewing
-    @viewing = false
-    self.class.forget_view(@conversation.id)
-  end
-
   def unsubscribed
-    away
     Rails.logger.info "ConversationChannel unsubscribed from #{@stream_name}"
   end
 end

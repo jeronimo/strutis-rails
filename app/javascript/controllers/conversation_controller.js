@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { subscribeConversation, performConversation } from "controllers/conversation_stream"
+import { subscribeConversation, performConversation, setWatching } from "controllers/conversation_stream"
 
 export default class extends Controller {
   static targets = [
@@ -32,13 +32,14 @@ export default class extends Controller {
     document.addEventListener('keydown', this._onEscape)
     document.addEventListener('visibilitychange', this._onVisibility)
     this._atBottom = true
-    this._viewing = true
+    this._watching = true
+    setWatching(true)
     this._openReasoning = new Set()
     this.presenceObserver = new IntersectionObserver((entries) => {
       const atBottom = entries.some((entry) => entry.isIntersecting)
       if (atBottom === this._atBottom) return
       this._atBottom = atBottom
-      this.reportPresence(atBottom ? 'read' : 'away')
+      this.updateWatching()
     })
     this.observeSentinel()
     this.mutationObserver = new MutationObserver((mutations) => this.handleMutation(mutations))
@@ -313,7 +314,9 @@ export default class extends Controller {
       return
     }
     this._atBottom = true
-    this.reportPresence('read')
+    this._watching = true
+    setWatching(true)
+    performConversation('read')
     this.scrollToLatest()
     this.formTarget.requestSubmit()
   }
@@ -344,14 +347,15 @@ export default class extends Controller {
   }
 
   handleVisibility() {
-    this.reportPresence('present')
+    this.updateWatching()
   }
 
-  reportPresence(action) {
-    const viewing = this._atBottom && !document.hidden
-    if (viewing === this._viewing) return
-    this._viewing = viewing
-    performConversation(viewing ? action : 'away')
+  updateWatching() {
+    const watching = this._atBottom && !document.hidden
+    if (watching === this._watching) return
+    this._watching = watching
+    setWatching(watching)
+    if (watching) performConversation('read')
   }
 
   restoreOpenReasoning() {
@@ -390,7 +394,8 @@ export default class extends Controller {
       this.element.dataset.conversationPublicId = publicId
       this.subscribe()
       this._atBottom = true
-      this._viewing = true
+      this._watching = true
+      setWatching(true)
       this.scrollToLatest()
     }
   }

@@ -35,37 +35,14 @@ RSpec.describe ConversationChannel, type: :channel do
     expect(conversation.reload.unread).to be false
   end
 
-  it 'counts the conversation as viewed while subscribed and not viewed after unsubscribe' do
-    subscribe public_id: conversation.public_id
-    expect(described_class.viewing?(conversation.id)).to be true
+  it 'resyncs the progress bar on subscribe' do
+    conversation.update!(running_at: Time.current)
 
-    unsubscribe
-    expect(described_class.viewing?(conversation.id)).to be false
-  end
-
-  it 'stops counting the conversation as viewed after away and resumes after read' do
     subscribe public_id: conversation.public_id
 
-    perform :away
-    expect(described_class.viewing?(conversation.id)).to be false
-
-    conversation.mark_unread!
-    expect(conversation.reload.unread).to be true
-
-    perform :read
-    expect(described_class.viewing?(conversation.id)).to be true
-    expect(conversation.reload.unread).to be false
-  end
-
-  it 'resumes presence on present without clearing the unread badge' do
-    subscribe public_id: conversation.public_id
-    perform :away
-    conversation.mark_unread!
-
-    perform :present
-
-    expect(described_class.viewing?(conversation.id)).to be true
-    expect(conversation.reload.unread).to be true
+    message = ActiveSupport::JSON.decode(broadcasts(conversation.to_gid_param).last).to_s
+    expect(message).to include("conversation-progress-#{conversation.public_id}")
+    expect(message).not_to include('d-none')
   end
 
   it 'renders the last error inside the messages frame' do

@@ -6,7 +6,6 @@ RSpec.describe ConversationCompactionJob, type: :job do
 
   before do
     allow(ConversationChannel).to receive(:broadcast_frame)
-    allow(ConversationChannel).to receive(:viewing?).and_return(false)
     allow(UserChannel).to receive(:broadcast_unread)
     allow(UserChannel).to receive(:broadcast_progress)
   end
@@ -55,7 +54,7 @@ RSpec.describe ConversationCompactionJob, type: :job do
     expect(ConversationChannel).to have_received(:broadcast_frame).with(conversation, show_progress: false)
   end
 
-  it 'marks the conversation unread after a successful compaction when nobody is viewing' do
+  it 'marks the conversation unread after a successful compaction' do
     allow(ConversationCompactionService).to receive(:perform).and_return(true)
 
     described_class.perform_now(conversation.id)
@@ -64,22 +63,12 @@ RSpec.describe ConversationCompactionJob, type: :job do
     expect(UserChannel).to have_received(:broadcast_unread).with(conversation, unread: true)
   end
 
-  it 'marks the conversation unread after a failed compaction when nobody is viewing' do
+  it 'marks the conversation unread after a failed compaction' do
     allow(ConversationCompactionService).to receive(:perform).and_return(false)
 
     described_class.perform_now(conversation.id)
 
     expect(conversation.reload.unread).to be true
     expect(UserChannel).to have_received(:broadcast_unread).with(conversation, unread: true)
-  end
-
-  it 'does not mark the conversation unread while it is being viewed' do
-    allow(ConversationChannel).to receive(:viewing?).with(conversation.id).and_return(true)
-    allow(ConversationCompactionService).to receive(:perform).and_return(true)
-
-    described_class.perform_now(conversation.id)
-
-    expect(conversation.reload.unread).to be false
-    expect(UserChannel).not_to have_received(:broadcast_unread)
   end
 end

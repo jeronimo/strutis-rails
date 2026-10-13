@@ -3,6 +3,7 @@ import { createConsumer } from "@rails/actioncable/src"
 export const consumer = createConsumer()
 let currentSubscription = null
 let currentPublicId = null
+let watching = false
 
 export function subscribeConversation(publicId) {
   if (!publicId) return
@@ -18,14 +19,26 @@ export function subscribeConversation(publicId) {
         applyStream(data)
       },
       connected() {
-        currentSubscription = newSubscription
-        currentPublicId = publicId
         if (oldSubscription && oldPublicId !== publicId) {
           oldSubscription.unsubscribe()
         }
       }
     }
   )
+  currentSubscription = newSubscription
+  currentPublicId = publicId
+}
+
+export function setWatching(value) {
+  watching = value
+}
+
+export function readBadgeIfWatched(data) {
+  if (watching && typeof data === 'string' && data.includes(`conversation-unread-${currentPublicId}`)) {
+    performConversation('read')
+    return true
+  }
+  return false
 }
 
 export function performConversation(action) {

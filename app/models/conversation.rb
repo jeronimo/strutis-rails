@@ -37,7 +37,6 @@ class Conversation < ApplicationRecord
   end
 
   def mark_unread!
-    return if ConversationChannel.viewing?(id)
     update_column(:unread, true)
     UserChannel.broadcast_unread(self, unread: true)
   end
