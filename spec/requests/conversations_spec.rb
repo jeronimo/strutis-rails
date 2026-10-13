@@ -71,13 +71,22 @@ RSpec.describe 'Conversations', type: :request do
   end
 
   describe 'POST /conversations/:id/stop' do
-    it 'records the stop request for the conversation found by public id' do
+    it 'records the stop request for a running conversation found by public id' do
+      conversation = user.conversations.create!(model: 'test-model', running_at: Time.current)
+
+      post "/conversations/#{conversation.public_id}/stop"
+
+      expect(response).to have_http_status(:ok)
+      expect(conversation.reload.stop_requested?).to be true
+    end
+
+    it 'ignores the stop request when no completion is running' do
       conversation = user.conversations.create!(model: 'test-model')
 
       post "/conversations/#{conversation.public_id}/stop"
 
       expect(response).to have_http_status(:ok)
-      expect(CompletionSignal.new(conversation.id).stopped?).to be true
+      expect(conversation.reload.stop_requested?).to be false
     end
   end
 end

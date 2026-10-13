@@ -12,7 +12,13 @@ RSpec.describe ConversationCompletionJob, type: :job do
     allow(OpenAiService).to receive(:supports_image_input?).and_return(false)
     allow_any_instance_of(OpenAiService).to receive(:tools).and_return([])
     allow(ConversationChannel).to receive(:broadcast_frame)
-    allow(ConversationPresence).to receive(:viewing?).and_return(false)
+    allow(ConversationChannel).to receive(:broadcast_message)
+    allow(ConversationChannel).to receive(:replace_message)
+    allow(ConversationChannel).to receive(:broadcast_progress)
+    allow(ConversationChannel).to receive(:broadcast_context_usage)
+    allow(ConversationChannel).to receive(:broadcast_error)
+    allow(ConversationChannel).to receive(:viewing?).and_return(false)
+    allow(CompletionMonitor).to receive(:start).and_return(instance_double(CompletionMonitor, stop_requested?: false, stop: nil))
     allow_any_instance_of(OpenAiService).to receive(:completion) do |_messages, _model, **_options, &block|
       block&.call('hello')
       { content: 'hello', tool_calls: [], latency_ms: 1, inference_ms: 1, prompt_tokens: 10, completion_tokens: 2, reasoning_tokens: 0 }
@@ -28,6 +34,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
     described_class.perform_now(conversation.id)
 
     expect(ConversationCompactionService).to have_received(:perform).with(a_kind_of(Conversation), an_instance_of(OpenAiService), on_retry: anything)
+    expect(ConversationChannel).to have_received(:broadcast_frame).with(conversation, show_progress: true)
     expect(conversation.messages.reload.where(role: 'assistant').last&.content).to eq('hello')
   end
 
@@ -110,7 +117,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
   it 'stops the run when a stop is requested and marks it unread because nobody is viewing' do
     conversation.update!(context_tokens: 0)
     conversation.messages.create!(role: 'user', content: 'new')
-    CompletionSignal.request_stop(conversation.id)
+    conversation.request_stop!
 
     described_class.perform_now(conversation.id)
 
@@ -121,7 +128,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
   it 'does not mark the conversation unread while it is being viewed' do
     conversation.update!(context_tokens: 0)
     conversation.messages.create!(role: 'user', content: 'new')
-    allow(ConversationPresence).to receive(:viewing?).with(conversation.id).and_return(true)
+    allow(ConversationChannel).to receive(:viewing?).with(conversation.id).and_return(true)
 
     described_class.perform_now(conversation.id)
 
@@ -146,7 +153,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
       end
     end
     allow_any_instance_of(OpenAiService).to receive(:execute_tool) do |_instance, _tool_call, _tools|
-      CompletionSignal.request_stop(conversation.id)
+      conversation.request_stop!
       '{"result":"ok"}'
     end
 
@@ -160,7 +167,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
     conversation.update!(context_tokens: 0)
     conversation.messages.create!(role: 'user', content: 'new')
     conversation.messages.create!(role: 'user', content: 'queued next', queued: true)
-    CompletionSignal.request_stop(conversation.id)
+    conversation.request_stop!
 
     expect { described_class.perform_now(conversation.id) }.to have_enqueued_job(described_class).with(conversation.id)
 
@@ -168,12 +175,12 @@ RSpec.describe ConversationCompletionJob, type: :job do
     expect(conversation.messages.where(content: 'queued next', queued: false).count).to eq(1)
   end
 
-  it 'marks the conversation alive while running and unread after finishing' do
+  it 'marks the conversation alive while running and idle after finishing' do
     conversation.update!(context_tokens: 0)
     conversation.messages.create!(role: 'user', content: 'new')
     alive_during = nil
     allow_any_instance_of(OpenAiService).to receive(:completion) do |_instance, _messages, _model, **_options, &block|
-      alive_during = CompletionSignal.alive?(conversation.id)
+      alive_during = Conversation.find(conversation.id).completion_alive?
       block&.call('hello')
       { content: 'hello', tool_calls: [], latency_ms: 1, inference_ms: 1, prompt_tokens: 10, completion_tokens: 2, reasoning_tokens: 0 }
     end
@@ -181,7 +188,7 @@ RSpec.describe ConversationCompletionJob, type: :job do
     described_class.perform_now(conversation.id)
 
     expect(alive_during).to be true
-    expect(CompletionSignal.alive?(conversation.id)).to be false
+    expect(conversation.reload.completion_alive?).to be false
     expect(conversation.reload.unread).to be true
   end
 

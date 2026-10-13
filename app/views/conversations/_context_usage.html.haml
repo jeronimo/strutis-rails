@@ -1,3 +1,5 @@
-- if conversation.compaction_needed?
-  .alert.alert-warning.py-2.my-2
-    Context usage is above 80%. Automatic compaction keeps system messages with rules.
+%div{ id: "conversation-context-usage-#{conversation.public_id}" }
+  - if conversation.compaction_needed?
+    .alert.alert-warning.py-2.my-2
+      Context usage is above 80%. Automatic compaction keeps system messages with rules.
+  %span.d-none{ data: { context_tokens: conversation.context_tokens } }

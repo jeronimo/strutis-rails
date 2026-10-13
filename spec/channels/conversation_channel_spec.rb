@@ -36,39 +36,35 @@ RSpec.describe ConversationChannel, type: :channel do
   end
 
   it 'counts the conversation as viewed while subscribed and not viewed after unsubscribe' do
-    Rails.cache.delete("conversation_presence:viewing:#{conversation.id}")
-
     subscribe public_id: conversation.public_id
-    expect(ConversationPresence.viewing?(conversation.id)).to be true
+    expect(described_class.viewing?(conversation.id)).to be true
 
     unsubscribe
-    expect(ConversationPresence.viewing?(conversation.id)).to be false
+    expect(described_class.viewing?(conversation.id)).to be false
   end
 
   it 'stops counting the conversation as viewed after away and resumes after read' do
-    Rails.cache.delete("conversation_presence:viewing:#{conversation.id}")
     subscribe public_id: conversation.public_id
 
     perform :away
-    expect(ConversationPresence.viewing?(conversation.id)).to be false
+    expect(described_class.viewing?(conversation.id)).to be false
 
     conversation.mark_unread!
     expect(conversation.reload.unread).to be true
 
     perform :read
-    expect(ConversationPresence.viewing?(conversation.id)).to be true
+    expect(described_class.viewing?(conversation.id)).to be true
     expect(conversation.reload.unread).to be false
   end
 
   it 'resumes presence on present without clearing the unread badge' do
-    Rails.cache.delete("conversation_presence:viewing:#{conversation.id}")
     subscribe public_id: conversation.public_id
     perform :away
     conversation.mark_unread!
 
     perform :present
 
-    expect(ConversationPresence.viewing?(conversation.id)).to be true
+    expect(described_class.viewing?(conversation.id)).to be true
     expect(conversation.reload.unread).to be true
   end
 

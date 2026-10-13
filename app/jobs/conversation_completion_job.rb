@@ -1,22 +1,23 @@
 class ConversationCompletionJob < ApplicationJob
   MAX_TOOL_ROUNDS = 100
+  DELTA_FLUSH_EVERY = 0.2
 
   def perform(conversation_id)
-    @signal = CompletionSignal.new(conversation_id)
-    @signal.start!
     @conversation = Conversation.find_by(id: conversation_id)
-    if @conversation.nil?
-      @signal.finish!
-      return
-    end
+    return if @conversation.nil?
+
+    @conversation.mark_completion_running!
+    @monitor = CompletionMonitor.start(@conversation)
     @openai = @conversation.open_ai_service
     UserChannel.broadcast_progress(@conversation, active: true)
 
     @finalized = false
     @failure = nil
     @stopped = false
+    @message = nil
     @conversation.update_column(:last_error, nil)
-    broadcast_frame(show_progress: true)
+    ConversationChannel.broadcast_error(@conversation)
+    ConversationChannel.broadcast_progress(@conversation, active: true)
     begin
       run_completion
     rescue StandardError => e
@@ -25,7 +26,8 @@ class ConversationCompletionJob < ApplicationJob
       Rails.logger.error { "[ConversationCompletionJob] #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
     ensure
       finish_failed_turn
-      @signal.finish!
+      @monitor.stop
+      @conversation.mark_completion_idle!
     end
     drained = drain_queued_messages
     UserChannel.broadcast_progress(@conversation, active: false) unless drained
@@ -54,15 +56,19 @@ class ConversationCompletionJob < ApplicationJob
     metrics = { prompt_tokens: 0, completion_tokens: 0, reasoning_tokens: 0, latency_ms: 0, inference_ms: 0 }
     turns = 0
     loop do
-      if @signal.stopped?
+      if stop_requested?
         @stopped = true
+        @conversation.clear_stop!
         break
       end
-      compact_conversation if @conversation.compaction_needed? || @conversation.prompt_over_budget?
+      if @conversation.compaction_needed? || @conversation.prompt_over_budget?
+        broadcast_frame(show_progress: true) if compact_conversation
+      end
       wrap_up = turns >= MAX_TOOL_ROUNDS
       result = stream_turn(wrap_up ? nil : tools)
       if result[:stopped]
         @stopped = true
+        @conversation.clear_stop!
         @message.update!(content: result[:content]) if @message && result[:content].present?
         break
       end
@@ -80,19 +86,31 @@ class ConversationCompletionJob < ApplicationJob
 
   def stream_turn(tools)
     @message = nil
+    buffer = +''
+    last_flush = nil
     result = @openai.completion(@conversation.prompt_messages, @conversation.model, tools: tools,
       chat_template_kwargs: @conversation.chat_template_kwargs,
-      should_stop: -> { @signal.stopped? }, on_retry: method(:notify_retry)) do |delta|
+      should_stop: -> { @monitor.stop_requested? }, on_retry: method(:notify_retry)) do |delta|
+      buffer << delta
       if @message.nil?
-        @message = @conversation.messages.create!(role: 'assistant', content: delta, model: @conversation.model)
-        broadcast_frame(show_progress: false)
+        next if buffer.blank?
+        @message = @conversation.messages.create!(role: 'assistant', content: buffer, model: @conversation.model)
+        ConversationChannel.broadcast_message(@conversation, @message)
+        buffer.clear
+        last_flush = monotonic
       else
-        broadcast_delta(delta)
+        now = monotonic
+        if now - last_flush >= DELTA_FLUSH_EVERY
+          broadcast_delta(buffer)
+          buffer.clear
+          last_flush = now
+        end
       end
     end
+    broadcast_delta(buffer) if @message && buffer.present?
     if @message.nil? && result[:reasoning].present?
       @message = @conversation.messages.create!(role: 'assistant', content: '', reasoning: result[:reasoning], model: @conversation.model)
-      broadcast_frame(show_progress: false)
+      ConversationChannel.broadcast_message(@conversation, @message)
     end
     result
   end
@@ -100,18 +118,19 @@ class ConversationCompletionJob < ApplicationJob
   def record_tool_turn(result, tools)
     if @message
       @message.update!(content: result[:content], tool_calls: result[:tool_calls], latency_ms: result[:latency_ms], inference_ms: result[:inference_ms])
+      ConversationChannel.replace_message(@conversation, @message)
     else
       @message = @conversation.messages.create!(role: 'assistant', content: result[:content], tool_calls: result[:tool_calls], latency_ms: result[:latency_ms], inference_ms: result[:inference_ms], model: @conversation.model)
+      ConversationChannel.broadcast_message(@conversation, @message)
     end
-    broadcast_frame(show_progress: true)
     result[:tool_calls].each do |tool_call|
-      break if @signal.stopped?
-      start = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+      break if stop_requested?
+      start = monotonic
       tool_result = @openai.execute_tool(tool_call, tools)
-      tool_ms = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start) * 1000).round
-      @conversation.messages.create!(role: 'tool', tool_call_id: tool_call[:id], content: tool_result, latency_ms: tool_ms, inference_ms: tool_ms, model: @conversation.model)
+      tool_ms = ((monotonic - start) * 1000).round
+      tool_message = @conversation.messages.create!(role: 'tool', tool_call_id: tool_call[:id], content: tool_result, latency_ms: tool_ms, inference_ms: tool_ms, model: @conversation.model)
+      ConversationChannel.broadcast_message(@conversation, tool_message)
     end
-    broadcast_frame(show_progress: true)
   end
 
   def compact_conversation
@@ -146,8 +165,11 @@ class ConversationCompletionJob < ApplicationJob
       if result[:content].blank? && result[:reasoning].present?
         @conversation.last_error = ConversationError.thinking_only(metrics[:latency_ms])
         @conversation.update_column(:last_error, @conversation.last_error)
+        ConversationChannel.broadcast_error(@conversation)
       end
-      broadcast_frame(show_progress: false)
+      ConversationChannel.replace_message(@conversation, @message)
+      ConversationChannel.broadcast_progress(@conversation, active: false)
+      ConversationChannel.broadcast_context_usage(@conversation)
     end
   end
 
@@ -163,6 +185,14 @@ class ConversationCompletionJob < ApplicationJob
 
   def notify_retry(attempt, max, wait)
     ConversationChannel.broadcast_retry(@conversation, attempt:, max:, wait:)
+  end
+
+  def stop_requested?
+    @monitor.stop_requested? || Conversation.stop_requested_for?(@conversation.id)
+  end
+
+  def monotonic
+    Process.clock_gettime(Process::CLOCK_MONOTONIC)
   end
 
   def finish_failed_turn

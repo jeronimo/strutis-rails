@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_10_03_203549) do
+ActiveRecord::Schema[8.1].define(version: 2026_10_13_134216) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -84,10 +84,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_10_03_203549) do
     t.bigint "folder_id"
     t.float "position", default: 0.0, null: false
     t.boolean "unread", default: false
+    t.datetime "running_at"
+    t.datetime "stop_requested_at"
     t.index ["deleted_at"], name: "index_conversations_on_deleted_at"
     t.index ["folder_id"], name: "index_conversations_on_folder_id"
     t.index ["position"], name: "index_conversations_on_position"
     t.index ["public_id"], name: "index_conversations_on_public_id", unique: true
+    t.index ["running_at"], name: "index_conversations_on_running_at"
     t.index ["user_id"], name: "index_conversations_on_user_id"
   end
 

@@ -231,7 +231,7 @@ RSpec.describe Conversation, type: :model do
 
   describe '#mark_unread!' do
     it 'marks and broadcasts when nobody is viewing' do
-      allow(ConversationPresence).to receive(:viewing?).with(conversation.id).and_return(false)
+      allow(ConversationChannel).to receive(:viewing?).with(conversation.id).and_return(false)
       allow(UserChannel).to receive(:broadcast_unread)
 
       conversation.mark_unread!
@@ -241,7 +241,7 @@ RSpec.describe Conversation, type: :model do
     end
 
     it 'does nothing while the conversation is being viewed' do
-      allow(ConversationPresence).to receive(:viewing?).with(conversation.id).and_return(true)
+      allow(ConversationChannel).to receive(:viewing?).with(conversation.id).and_return(true)
       allow(UserChannel).to receive(:broadcast_unread)
 
       conversation.mark_unread!

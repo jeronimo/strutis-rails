@@ -41,7 +41,7 @@ class ConversationsController < ApplicationController
 
     apply_conversation_settings(conversation, model)
 
-    if CompletionSignal.alive?(conversation.id)
+    if conversation.completion_alive?
       queued_message = conversation.messages.create!(role: 'user', content: content, model: model, queued: true)
       queued_message.attachments.attach(blobs)
       render turbo_stream: turbo_stream.replace("messages-#{conversation.public_id}", partial: 'conversations/messages_frame', locals: { conversation:, messages: conversation.messages.with_attachments, show_progress: true })
@@ -76,8 +76,8 @@ class ConversationsController < ApplicationController
 
   def stop
     conversation = current_user.conversations.find_by!(public_id: params[:id])
-    CompletionSignal.request_stop(conversation.id)
-    render turbo_stream: turbo_stream.remove("conversation-progress-#{conversation.public_id}")
+    conversation.request_stop! if conversation.completion_alive?
+    render turbo_stream: turbo_stream.replace("conversation-progress-#{conversation.public_id}", partial: 'conversations/progress', locals: { conversation:, active: false })
   end
 
   def update
@@ -163,7 +163,7 @@ class ConversationsController < ApplicationController
     ConversationCompactionJob.perform_later(conversation.id)
     render turbo_stream: [
       turbo_stream.replace('conversation-error', ''),
-      turbo_stream.append("messages-#{conversation.public_id}", partial: 'conversations/progress', locals: { conversation: })
+      turbo_stream.replace("conversation-progress-#{conversation.public_id}", partial: 'conversations/progress', locals: { conversation:, active: true })
     ]
   end
 
@@ -203,7 +203,7 @@ class ConversationsController < ApplicationController
       user_message_stream(conversation, user_message, new_conversation:),
       conversation_hidden_fields_stream(conversation),
       turbo_stream.replace('conversation-error', ''),
-      turbo_stream.append("messages-#{conversation.public_id}", partial: 'conversations/progress', locals: { conversation: })
+      turbo_stream.replace("conversation-progress-#{conversation.public_id}", partial: 'conversations/progress', locals: { conversation:, active: true })
     ]
     streams << conversation_list_stream(conversation, active: new_conversation) if new_conversation
     streams << turbo_stream.remove('system-prompt-section') if new_conversation
@@ -221,9 +221,9 @@ class ConversationsController < ApplicationController
 
   def user_message_stream(conversation, user_message, new_conversation:)
     if new_conversation
-      turbo_stream.replace('conversation-messages', partial: 'conversations/messages_container', locals: { conversation:, messages: [ user_message ] })
+      turbo_stream.replace('conversation-messages', partial: 'conversations/messages_container', locals: { conversation:, messages: [ user_message ], show_progress: false })
     else
-      turbo_stream.append("messages-#{conversation.public_id}", partial: 'conversations/message', locals: { message: user_message })
+      turbo_stream.append("messages-list-#{conversation.public_id}", partial: 'conversations/message', locals: { message: user_message })
     end
   end
 end

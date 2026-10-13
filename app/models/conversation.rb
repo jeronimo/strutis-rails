@@ -1,6 +1,7 @@
 class Conversation < ApplicationRecord
   COMPACT_THRESHOLD = 0.8
   TITLE_PLACEHOLDER_LENGTH = 60
+  COMPLETION_STALE_AFTER = 30.seconds
 
   belongs_to :user
   belongs_to :folder, optional: true
@@ -36,9 +37,38 @@ class Conversation < ApplicationRecord
   end
 
   def mark_unread!
-    return if ConversationPresence.viewing?(id)
+    return if ConversationChannel.viewing?(id)
     update_column(:unread, true)
     UserChannel.broadcast_unread(self, unread: true)
+  end
+
+  def completion_alive?
+    running_at.present? && running_at > COMPLETION_STALE_AFTER.ago
+  end
+
+  def mark_completion_running!
+    update_column(:running_at, Time.current)
+  end
+
+  def mark_completion_idle!
+    update_columns(running_at: nil, stop_requested_at: nil)
+  end
+
+  def request_stop!
+    update_column(:stop_requested_at, Time.current)
+    CompletionMonitor.notify_stop(id)
+  end
+
+  def stop_requested?
+    stop_requested_at.present?
+  end
+
+  def self.stop_requested_for?(id)
+    where(id:).where.not(stop_requested_at: nil).exists?
+  end
+
+  def clear_stop!
+    update_column(:stop_requested_at, nil)
   end
 
   def open_ai_service

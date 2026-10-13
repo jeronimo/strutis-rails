@@ -1,9 +1,9 @@
 = turbo_frame_tag "messages-#{conversation.public_id}", data: { conversation_target: 'messages' } do
-  - messages.each do |message|
-    = render 'conversations/message', message: message
-  - if show_progress
-    = render 'conversations/progress', conversation: conversation
+  %div{ id: "messages-list-#{conversation.public_id}" }
+    - messages.each do |message|
+      = render 'conversations/message', message: message
+  = render 'conversations/progress', conversation: conversation, active: show_progress
   = render 'conversations/context_usage', conversation: conversation
-  %span.d-none{ data: { context_tokens: conversation.context_tokens } }
-  - if conversation.last_error.present?
-    = render 'conversations/error', error: conversation.last_error
+  %div{ id: "conversation-frame-error-#{conversation.public_id}" }
+    - if conversation.last_error.present?
+      = render 'conversations/error', error: conversation.last_error

@@ -3,11 +3,56 @@ class ConversationChannel < ApplicationCable::Channel
   extend Turbo::Streams::StreamName
   include Turbo::Streams::StreamName::ClassMethods
 
+  @viewing_counts = Hash.new(0)
+  @viewing_lock = Mutex.new
+
+  class << self
+    def viewing?(conversation_id)
+      @viewing_lock.synchronize { @viewing_counts[conversation_id] > 0 }
+    end
+
+    def record_view(conversation_id)
+      @viewing_lock.synchronize { @viewing_counts[conversation_id] += 1 }
+    end
+
+    def forget_view(conversation_id)
+      @viewing_lock.synchronize do
+        @viewing_counts[conversation_id] -= 1
+        @viewing_counts.delete(conversation_id) if @viewing_counts[conversation_id] <= 0
+      end
+    end
+  end
+
   def self.broadcast_frame(conversation, show_progress:)
     broadcast_replace_to conversation,
       target: "messages-#{conversation.public_id}",
       partial: 'conversations/messages_frame',
       locals: { conversation:, messages: conversation.messages.with_attachments.reload, show_progress: }
+  end
+
+  def self.broadcast_message(conversation, message)
+    broadcast_append_to conversation, target: "messages-list-#{conversation.public_id}",
+      partial: 'conversations/message', locals: { message: }
+  end
+
+  def self.replace_message(conversation, message)
+    broadcast_replace_to conversation, target: "message-#{message.id}",
+      partial: 'conversations/message', locals: { message: }
+  end
+
+  def self.broadcast_progress(conversation, active:)
+    broadcast_replace_to conversation, target: "conversation-progress-#{conversation.public_id}",
+      partial: 'conversations/progress', locals: { conversation:, active: }
+  end
+
+  def self.broadcast_context_usage(conversation)
+    broadcast_replace_to conversation, target: "conversation-context-usage-#{conversation.public_id}",
+      partial: 'conversations/context_usage', locals: { conversation: }
+  end
+
+  def self.broadcast_error(conversation)
+    html = conversation.last_error.present? ? ApplicationController.render(partial: 'conversations/error', locals: { error: conversation.last_error }) : ''
+    broadcast_replace_to conversation, target: "conversation-frame-error-#{conversation.public_id}", html:
   end
 
   def self.broadcast_title(conversation)
@@ -29,8 +74,8 @@ class ConversationChannel < ApplicationCable::Channel
     if @conversation
       @stream_name = self.class.send(:stream_name_from, @conversation)
       stream_from @stream_name
-      @presence_token = SecureRandom.hex(16)
-      ConversationPresence.new(@conversation.id).start!(@presence_token)
+      @viewing = true
+      self.class.record_view(@conversation.id)
       @conversation.mark_read!
       Rails.logger.info "ConversationChannel subscribed to #{@stream_name}"
     else
@@ -45,15 +90,20 @@ class ConversationChannel < ApplicationCable::Channel
   end
 
   def present
-    ConversationPresence.new(@conversation.id).start!(@presence_token) if @conversation && @presence_token
+    return unless @conversation
+    return if @viewing
+    @viewing = true
+    self.class.record_view(@conversation.id)
   end
 
   def away
-    ConversationPresence.new(@conversation.id).finish!(@presence_token) if @conversation && @presence_token
+    return unless @conversation && @viewing
+    @viewing = false
+    self.class.forget_view(@conversation.id)
   end
 
   def unsubscribed
-    ConversationPresence.new(@conversation.id).finish!(@presence_token) if @conversation && @presence_token
+    away
     Rails.logger.info "ConversationChannel unsubscribed from #{@stream_name}"
   end
 end

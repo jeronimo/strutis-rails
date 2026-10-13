@@ -1,4 +1,4 @@
-.chat-progress.mb-4{ id: "conversation-progress-#{conversation.public_id}" }
+.chat-progress.mb-4{ id: "conversation-progress-#{conversation.public_id}", class: [ ('d-none' unless active) ] }
   .d-flex.align-items-center.gap-2
     .progress.flex-grow-1
       .progress-bar.w-50

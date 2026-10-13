@@ -5,7 +5,7 @@
     .chat-scroll.flex-fill.min-h-0{ data: { conversation_target: 'scroll' } }
       .pe-2#conversation-messages
         - if conversation
-          = render 'conversations/messages_container', conversation:, messages: conversation.messages
+          = render 'conversations/messages_container', conversation:, messages: conversation.messages, show_progress: conversation.completion_alive?
         - else
           = turbo_frame_tag 'messages', data: { conversation_target: 'messages' }
     .flex-shrink-0#conversation-error

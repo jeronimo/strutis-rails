@@ -6,7 +6,7 @@ RSpec.describe ConversationCompactionJob, type: :job do
 
   before do
     allow(ConversationChannel).to receive(:broadcast_frame)
-    allow(ConversationPresence).to receive(:viewing?).and_return(false)
+    allow(ConversationChannel).to receive(:viewing?).and_return(false)
     allow(UserChannel).to receive(:broadcast_unread)
     allow(UserChannel).to receive(:broadcast_progress)
   end
@@ -74,7 +74,7 @@ RSpec.describe ConversationCompactionJob, type: :job do
   end
 
   it 'does not mark the conversation unread while it is being viewed' do
-    allow(ConversationPresence).to receive(:viewing?).with(conversation.id).and_return(true)
+    allow(ConversationChannel).to receive(:viewing?).with(conversation.id).and_return(true)
     allow(ConversationCompactionService).to receive(:perform).and_return(true)
 
     described_class.perform_now(conversation.id)
