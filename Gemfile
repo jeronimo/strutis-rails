@@ -1,9 +1,9 @@
 source 'https://rubygems.org'
 
 gem 'json'
-gem 'rails'
+gem 'rails' # When #57517 (connection_lock) ships: delete config/initializers/pg_connection_lock.rb, set `connection_lock: monitor` in database.yml
 gem 'propshaft'
-gem 'pg'
+gem 'pg' # Do NOT pin below 1.7.0: 1.6.x silently corrupts query results (ged/ruby-pg#751); interim race fix lives in config/initializers/pg_connection_lock.rb
 gem 'puma'
 gem 'importmap-rails'
 gem 'turbo-rails'
