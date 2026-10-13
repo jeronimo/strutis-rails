@@ -1,9 +1,9 @@
 import { Controller } from "@hotwired/stimulus"
-import { subscribeConversation } from "controllers/conversation_stream"
+import { subscribeConversation, performConversation } from "controllers/conversation_stream"
 
 export default class extends Controller {
   static targets = [
-    "textarea", "form", "path", "messages", "submit", "scroll",
+    "textarea", "form", "path", "messages", "submit", "scroll", "sentinel",
     "modelButton", "modelPopup", "modelList", "modelName", "modelHidden",
     "thinking", "reasoningEffort", "thinkingHidden", "reasoningEffortHidden",
     "contextWarning", "attachments", "mic", "paperclip",
@@ -27,8 +27,20 @@ export default class extends Controller {
     this.recordingInterval = null
     this._onOutsideClick = (event) => this.checkOutsideClick(event)
     this._onEscape = (event) => this.checkEscape(event)
+    this._onVisibility = () => this.handleVisibility()
     document.addEventListener('click', this._onOutsideClick)
     document.addEventListener('keydown', this._onEscape)
+    document.addEventListener('visibilitychange', this._onVisibility)
+    this._atBottom = true
+    this._viewing = true
+    this._openReasoning = new Set()
+    this.presenceObserver = new IntersectionObserver((entries) => {
+      const atBottom = entries.some((entry) => entry.isIntersecting)
+      if (atBottom === this._atBottom) return
+      this._atBottom = atBottom
+      this.reportPresence(atBottom ? 'read' : 'away')
+    })
+    this.observeSentinel()
     this.mutationObserver = new MutationObserver((mutations) => this.handleMutation(mutations))
     this.mutationObserver.observe(this.element, { childList: true, subtree: true })
     this.resizeObserver = new ResizeObserver(() => this.updateScrollPadding())
@@ -40,8 +52,10 @@ export default class extends Controller {
   disconnect() {
     this.mutationObserver.disconnect()
     this.resizeObserver.disconnect()
+    this.presenceObserver.disconnect()
     document.removeEventListener('click', this._onOutsideClick)
     document.removeEventListener('keydown', this._onEscape)
+    document.removeEventListener('visibilitychange', this._onVisibility)
     this.stopRecordingTimer()
   }
 
@@ -244,7 +258,7 @@ export default class extends Controller {
       clearInterval(this.recordingInterval)
       this.recordingInterval = null
     }
-    this.recordingTimerTarget.classList.add('d-none')
+    if (this.hasRecordingTimerTarget) this.recordingTimerTarget.classList.add('d-none')
   }
 
   handleRecordingStop() {
@@ -298,6 +312,9 @@ export default class extends Controller {
       this.showImageWarning()
       return
     }
+    this._atBottom = true
+    this.reportPresence('read')
+    this.scrollToLatest()
     this.formTarget.requestSubmit()
   }
 
@@ -312,8 +329,43 @@ export default class extends Controller {
     this.syncPublicId(mutations)
     this.syncContextTokens(mutations)
     if (this.mutationAffectsMessages(mutations)) {
-      this.scrollToLatest()
+      this.observeSentinel()
+      this.restoreOpenReasoning()
+      if (this._atBottom) this.scrollToLatest()
     }
+  }
+
+  observeSentinel() {
+    const sentinel = this.hasSentinelTarget ? this.sentinelTarget : null
+    if (sentinel === this._observedSentinel) return
+    this.presenceObserver.disconnect()
+    this._observedSentinel = sentinel
+    if (sentinel) this.presenceObserver.observe(sentinel)
+  }
+
+  handleVisibility() {
+    this.reportPresence('present')
+  }
+
+  reportPresence(action) {
+    const viewing = this._atBottom && !document.hidden
+    if (viewing === this._viewing) return
+    this._viewing = viewing
+    performConversation(viewing ? action : 'away')
+  }
+
+  restoreOpenReasoning() {
+    if (!this.hasMessagesTarget) return
+    this.messagesTarget.querySelectorAll('details[id^="message-reasoning-"]').forEach((details) => {
+      if (!details.dataset.reasoningBound) {
+        details.dataset.reasoningBound = '1'
+        details.addEventListener('toggle', () => {
+          if (details.open) this._openReasoning.add(details.id)
+          else this._openReasoning.delete(details.id)
+        })
+      }
+      details.open = this._openReasoning.has(details.id)
+    })
   }
 
   syncContextTokens(mutations) {
@@ -337,6 +389,9 @@ export default class extends Controller {
     if (publicId && publicId !== this.element.dataset.conversationPublicId) {
       this.element.dataset.conversationPublicId = publicId
       this.subscribe()
+      this._atBottom = true
+      this._viewing = true
+      this.scrollToLatest()
     }
   }
 

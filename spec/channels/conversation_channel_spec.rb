@@ -45,6 +45,33 @@ RSpec.describe ConversationChannel, type: :channel do
     expect(ConversationPresence.viewing?(conversation.id)).to be false
   end
 
+  it 'stops counting the conversation as viewed after away and resumes after read' do
+    Rails.cache.delete("conversation_presence:viewing:#{conversation.id}")
+    subscribe public_id: conversation.public_id
+
+    perform :away
+    expect(ConversationPresence.viewing?(conversation.id)).to be false
+
+    conversation.mark_unread!
+    expect(conversation.reload.unread).to be true
+
+    perform :read
+    expect(ConversationPresence.viewing?(conversation.id)).to be true
+    expect(conversation.reload.unread).to be false
+  end
+
+  it 'resumes presence on present without clearing the unread badge' do
+    Rails.cache.delete("conversation_presence:viewing:#{conversation.id}")
+    subscribe public_id: conversation.public_id
+    perform :away
+    conversation.mark_unread!
+
+    perform :present
+
+    expect(ConversationPresence.viewing?(conversation.id)).to be true
+    expect(conversation.reload.unread).to be true
+  end
+
   it 'renders the last error inside the messages frame' do
     allow(OpenAiService).to receive(:context_length).with('test-model').and_return(100)
     conversation.update_column(:last_error, 'Boom happened')

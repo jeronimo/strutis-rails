@@ -39,7 +39,17 @@ class ConversationChannel < ApplicationCable::Channel
   end
 
   def read
-    @conversation&.reload&.mark_read!
+    return unless @conversation
+    present
+    @conversation.reload.mark_read!
+  end
+
+  def present
+    ConversationPresence.new(@conversation.id).start!(@presence_token) if @conversation && @presence_token
+  end
+
+  def away
+    ConversationPresence.new(@conversation.id).finish!(@presence_token) if @conversation && @presence_token
   end
 
   def unsubscribed

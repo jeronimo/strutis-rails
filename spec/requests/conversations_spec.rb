@@ -51,13 +51,13 @@ RSpec.describe 'Conversations', type: :request do
   end
 
   describe 'GET /conversations/:id' do
-    it 'marks the conversation read so the sidebar badge renders cleared' do
+    it 'does not mutate read state, so prefetches and bots cannot clear the unread badge' do
       conversation = user.conversations.create!(model: 'test-model', unread: true)
 
       get "/conversations/#{conversation.public_id}"
 
       expect(response).to have_http_status(:ok)
-      expect(conversation.reload.unread).to be false
+      expect(conversation.reload.unread).to be true
     end
 
     it 'does not mark another user\'s shared conversation read' do

@@ -3,6 +3,7 @@ class ConversationCompactionJob < ApplicationJob
     @conversation = Conversation.find_by(id: conversation_id)
     return unless @conversation
 
+    UserChannel.broadcast_progress(@conversation, active: true)
     compacted = false
     begin
       compacted = ConversationCompactionService.perform(@conversation, @conversation.open_ai_service,
@@ -20,6 +21,7 @@ class ConversationCompactionJob < ApplicationJob
         ConversationChannel.broadcast_frame(@conversation, show_progress: false)
       end
       @conversation.mark_unread!
+      UserChannel.broadcast_progress(@conversation, active: false)
     end
   end
 end

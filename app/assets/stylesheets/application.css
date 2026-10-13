@@ -444,6 +444,18 @@ input[readonly]:focus {
   flex-shrink: 0;
 }
 
+.conversation-busy {
+  flex-shrink: 0;
+  display: inline-flex;
+}
+
+.conversation-busy .spinner-border {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-width: 0.125em;
+  color: var(--bs-primary);
+}
+
 .folder-header {
   background-color: var(--bs-tertiary-bg);
   border-bottom: 1px solid rgba(var(--bs-primary-rgb), 0.1);

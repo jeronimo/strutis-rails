@@ -185,18 +185,21 @@ RSpec.describe ConversationCompletionJob, type: :job do
     expect(conversation.reload.unread).to be true
   end
 
-  it 'broadcasts the unread badge to the user channel on finalize' do
+  it 'broadcasts the unread badge and the finished progress indicator to the user channel on finalize' do
     conversation.update!(context_tokens: 0)
     conversation.messages.create!(role: 'user', content: 'new')
 
     stream = user.to_gid_param
     assert_no_broadcasts stream
     described_class.perform_now(conversation.id)
-    assert_broadcasts stream, 1
+    assert_broadcasts stream, 3
 
-    message = ActiveSupport::JSON.decode(broadcasts(stream).last).to_s
-    expect(message).to include("conversation-unread-#{conversation.public_id}")
-    expect(message).not_to include('d-none')
+    messages = broadcasts(stream).map { |broadcast| ActiveSupport::JSON.decode(broadcast).to_s }
+    busy = messages.select { |message| message.include?("conversation-busy-#{conversation.public_id}") }
+    expect(busy.first).not_to include('d-none')
+    expect(busy.last).to include('d-none')
+    unread = messages.find { |message| message.include?("conversation-unread-#{conversation.public_id}") }
+    expect(unread).not_to include('d-none')
   end
 
   it 'forces a tool-less wrap-up answer when the tool turn cap is reached' do

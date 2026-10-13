@@ -8,6 +8,16 @@ RSpec.describe ConversationCompactionJob, type: :job do
     allow(ConversationChannel).to receive(:broadcast_frame)
     allow(ConversationPresence).to receive(:viewing?).and_return(false)
     allow(UserChannel).to receive(:broadcast_unread)
+    allow(UserChannel).to receive(:broadcast_progress)
+  end
+
+  it 'broadcasts the busy indicator on start and finish' do
+    allow(ConversationCompactionService).to receive(:perform).and_return(true)
+
+    described_class.perform_now(conversation.id)
+
+    expect(UserChannel).to have_received(:broadcast_progress).with(conversation, active: true).ordered
+    expect(UserChannel).to have_received(:broadcast_progress).with(conversation, active: false).ordered
   end
 
   it 'does nothing when the conversation does not exist' do

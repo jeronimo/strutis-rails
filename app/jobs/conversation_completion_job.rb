@@ -10,6 +10,7 @@ class ConversationCompletionJob < ApplicationJob
       return
     end
     @openai = @conversation.open_ai_service
+    UserChannel.broadcast_progress(@conversation, active: true)
 
     @finalized = false
     @failure = nil
@@ -26,7 +27,8 @@ class ConversationCompletionJob < ApplicationJob
       finish_failed_turn
       @signal.finish!
     end
-    drain_queued_messages
+    drained = drain_queued_messages
+    UserChannel.broadcast_progress(@conversation, active: false) unless drained
     ConversationTitleJob.perform_later(@conversation.id) if @finalized && @conversation.title_generation_needed?
   end
 
@@ -34,7 +36,7 @@ class ConversationCompletionJob < ApplicationJob
 
   def drain_queued_messages
     queued = @conversation.messages.where(role: 'user', queued: true)
-    return unless queued.exists?
+    return false unless queued.exists?
 
     queued.find_each do |msg|
       blobs = msg.attachments.map(&:blob)
@@ -44,6 +46,7 @@ class ConversationCompletionJob < ApplicationJob
     end
     broadcast_frame(show_progress: true)
     self.class.perform_later(@conversation.id)
+    true
   end
 
   def run_completion

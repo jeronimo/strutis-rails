@@ -10,6 +10,13 @@ class UserChannel < ApplicationCable::Channel
       locals: { conversation:, unread: }
   end
 
+  def self.broadcast_progress(conversation, active:)
+    broadcast_replace_to conversation.user,
+      target: "conversation-busy-#{conversation.public_id}",
+      partial: 'conversations/busy_indicator',
+      locals: { conversation:, active: }
+  end
+
   def subscribed
     stream_from self.class.send(:stream_name_from, current_user)
   end

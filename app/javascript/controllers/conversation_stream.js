@@ -16,9 +16,6 @@ export function subscribeConversation(publicId) {
     {
       received(data) {
         applyStream(data)
-        if (typeof data === 'string' && data.includes(`messages-${publicId}`) && !document.querySelector(`#messages-${publicId} .chat-progress`)) {
-          this.perform('read')
-        }
       },
       connected() {
         currentSubscription = newSubscription
@@ -31,6 +28,10 @@ export function subscribeConversation(publicId) {
   )
 }
 
+export function performConversation(action) {
+  currentSubscription?.perform(action)
+}
+
 export function unsubscribeConversation() {
   if (!currentSubscription) return
   currentSubscription.unsubscribe()
@@ -40,8 +41,8 @@ export function unsubscribeConversation() {
 
 function applyStream(data) {
   if (typeof data === 'string') {
-    const stream = new DOMParser().parseFromString(data, 'text/html').querySelector('turbo-stream')
-    if (stream && stream.getAttribute('action') === 'append') {
+    const stream = new DOMParser().parseFromString(data, 'text/html').querySelector('turbo-stream[action="append"]')
+    if (stream) {
       const target = document.getElementById(stream.getAttribute('target'))
       if (target && target.dataset.final === 'true') return
     }
