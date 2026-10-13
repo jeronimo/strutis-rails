@@ -45,7 +45,7 @@ class ConversationsController < ApplicationController
     if CompletionSignal.alive?(conversation.id)
       queued_message = conversation.messages.create!(role: 'user', content: content, model: model, queued: true)
       queued_message.attachments.attach(blobs)
-      render turbo_stream: turbo_stream.replace("messages-#{conversation.public_id}", partial: 'conversations/messages_frame', locals: { conversation:, messages: conversation.messages, show_progress: true })
+      render turbo_stream: turbo_stream.replace("messages-#{conversation.public_id}", partial: 'conversations/messages_frame', locals: { conversation:, messages: conversation.messages.with_attachments, show_progress: true })
     else
       user_message = conversation.messages.create!(role: 'user', content: content, model: model)
       user_message.attachments.attach(blobs)
