@@ -7,13 +7,12 @@ class OpenAiClient
   RETRYABLE_EXCEPTIONS = [ Errno::ECONNREFUSED, Errno::ECONNRESET, Errno::EPIPE, Errno::ETIMEDOUT, EOFError, IOError, SocketError, Net::OpenTimeout, Net::ReadTimeout ].freeze
   RETRYABLE_STATUSES = [ 429, 502, 503, 504 ].freeze
 
-  OPEN_TIMEOUT = 5.seconds
-  READ_TIMEOUT = 30.seconds
+  DEFAULT_OPEN_TIMEOUT = 5.seconds
+  DEFAULT_READ_TIMEOUT = 30.seconds
   RETRY_WAITS = [ 5, 10, 20, 40, 80 ].freeze
-  STREAM_IDLE_TIMEOUT = 120.seconds
+  STREAM_IDLE_TIMEOUT = 300.seconds
   STREAM_MAX_DURATION = 240.seconds
-  TOOL_TIMEOUT = 120.seconds
-  STOP_WITHIN = 2.seconds
+  STOP_WITHIN = 1.seconds
 
   class Error < StandardError
     attr_reader :status
@@ -69,10 +68,10 @@ class OpenAiClient
     end
   end
 
-  def post_to(url, body)
+  def post_to(url, body, read_timeout:)
     uri = URI(url)
     http, request = build_request('POST', uri, body)
-    http.read_timeout = TOOL_TIMEOUT
+    http.read_timeout = read_timeout
     log_request(request, uri, body)
 
     response = http.request(request)
@@ -87,7 +86,6 @@ class OpenAiClient
     attempt = 0
     begin
       attempt += 1
-      on_retry&.call(attempt, max, nil) if attempt > 1
       yield
     rescue *RETRYABLE_EXCEPTIONS, Error => e
       raise unless retriable?(e) && attempt <= max && !should_stop&.call && (retryable.nil? || retryable.call)
@@ -211,8 +209,8 @@ class OpenAiClient
 
   def new_http(uri)
     Net::HTTP.new(uri.host, uri.port).tap do |http|
-      http.open_timeout = OPEN_TIMEOUT
-      http.read_timeout = READ_TIMEOUT
+      http.open_timeout = DEFAULT_OPEN_TIMEOUT
+      http.read_timeout = DEFAULT_READ_TIMEOUT
     end
   end
 

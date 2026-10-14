@@ -1,4 +1,6 @@
 class ToolExecutor
+  TOOL_READ_TIMEOUT = 60.seconds
+
   def initialize(client)
     @client = client
   end
@@ -9,7 +11,7 @@ class ToolExecutor
     return "Unknown tool: #{name}. Allowed tools: #{tools.map { |tool| tool.dig(:function, :name) }.join(', ')}." unless definition
 
     arguments = JSON.parse(tool_call.dig(:function, :arguments).to_s)
-    response = @client.post_to(definition[:endpoint], arguments)
+    response = @client.post_to(definition[:endpoint], arguments, read_timeout: TOOL_READ_TIMEOUT)
     unless response.is_a?(Net::HTTPSuccess)
       body = response.body.to_s
       return body if body.strip.present?
@@ -22,9 +24,9 @@ class ToolExecutor
   rescue JSON::ParserError => e
     report(e, name, "invalid arguments: #{e.message}")
   rescue Net::OpenTimeout => e
-    report(e, name, "request timed out after #{OpenAiClient::OPEN_TIMEOUT}s")
+    report(e, name, "request timed out after #{OpenAiClient::DEFAULT_OPEN_TIMEOUT}s")
   rescue Net::ReadTimeout => e
-    report(e, name, "read timed out after #{OpenAiClient::READ_TIMEOUT}s")
+    report(e, name, "read timed out after #{TOOL_READ_TIMEOUT}s")
   rescue SocketError => e
     report(e, name, e.message)
   end
