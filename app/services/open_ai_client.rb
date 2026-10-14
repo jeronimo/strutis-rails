@@ -87,6 +87,7 @@ class OpenAiClient
     attempt = 0
     begin
       attempt += 1
+      on_retry&.call(attempt, max, nil) if attempt > 1
       yield
     rescue *RETRYABLE_EXCEPTIONS, Error => e
       raise unless retriable?(e) && attempt <= max && !should_stop&.call && (retryable.nil? || retryable.call)

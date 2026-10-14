@@ -27,6 +27,26 @@ RSpec.describe 'Conversations', type: :request do
       conversation = user.conversations.last
       expect(conversation.messages.where(role: 'system').pluck(:content)).to eq([ 'my rules' ])
     end
+
+    it 'queues a message sent while a turn is running' do
+      conversation = user.conversations.create!(model: 'test-model', running_at: Time.current)
+
+      post '/conversations', params: { model: 'test-model', message: 'queued please', conversation_public_id: conversation.public_id }
+
+      expect(response).to have_http_status(:ok)
+      expect(conversation.messages.reload.where(content: 'queued please', queued: true).count).to eq(1)
+    end
+
+    it 'rejects /compact while a turn is running' do
+      conversation = user.conversations.create!(model: 'test-model', running_at: Time.current)
+      conversation.messages.create!(role: 'user', content: 'old')
+      conversation.messages.create!(role: 'assistant', content: 'old reply')
+
+      post '/conversations', params: { model: 'test-model', message: '/compact', conversation_public_id: conversation.public_id }
+
+      expect(response).to have_http_status(:unprocessable_content)
+      expect(conversation.messages.reload.where(content: '/compact').count).to eq(0)
+    end
   end
 
   describe 'POST /conversations/transcribe' do

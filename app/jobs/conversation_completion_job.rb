@@ -1,4 +1,4 @@
-class ConversationCompletionJob < ApplicationJob
+class ConversationCompletionJob < ConversationTurnJob
   MAX_TOOL_ROUNDS = 100
   DELTA_FLUSH_EVERY = 0.2
 
@@ -6,15 +6,23 @@ class ConversationCompletionJob < ApplicationJob
     @conversation = Conversation.find_by(id: conversation_id)
     return if @conversation.nil?
 
-    @conversation.mark_completion_running!
-    @monitor = CompletionMonitor.start(@conversation)
-    @openai = @conversation.open_ai_service
-    UserChannel.broadcast_progress(@conversation, active: true)
-
     @finalized = false
     @failure = nil
     @stopped = false
     @message = nil
+    with_turn(@conversation) { run_turn }
+    if drain_queued_messages
+      self.class.perform_later(@conversation.id)
+    else
+      UserChannel.broadcast_progress(@conversation, active: false)
+    end
+    ConversationTitleJob.perform_later(@conversation.id) if @finalized && @conversation.title_generation_needed?
+  end
+
+  private
+
+  def run_turn
+    @openai = @conversation.open_ai_service
     @conversation.update_column(:last_error, nil)
     ConversationChannel.broadcast_error(@conversation)
     ConversationChannel.broadcast_progress(@conversation, active: true)
@@ -26,29 +34,7 @@ class ConversationCompletionJob < ApplicationJob
       Rails.logger.error { "[ConversationCompletionJob] #{e.class}: #{e.message}\n#{e.backtrace&.first(5)&.join("\n")}" }
     ensure
       finish_failed_turn
-      @monitor.stop
-      @conversation.mark_completion_idle!
     end
-    drained = drain_queued_messages
-    UserChannel.broadcast_progress(@conversation, active: false) unless drained
-    ConversationTitleJob.perform_later(@conversation.id) if @finalized && @conversation.title_generation_needed?
-  end
-
-  private
-
-  def drain_queued_messages
-    queued = @conversation.messages.where(role: 'user', queued: true)
-    return false unless queued.exists?
-
-    queued.find_each do |msg|
-      blobs = msg.attachments.map(&:blob)
-      content, model = msg.content, msg.model
-      msg.destroy!
-      @conversation.messages.create!(role: 'user', content: content, model: model).attachments.attach(blobs)
-    end
-    broadcast_frame(show_progress: true)
-    self.class.perform_later(@conversation.id)
-    true
   end
 
   def run_completion

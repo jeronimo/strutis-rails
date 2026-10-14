@@ -8,6 +8,7 @@ RSpec.describe ConversationCompactionJob, type: :job do
     allow(ConversationChannel).to receive(:broadcast_frame)
     allow(UserChannel).to receive(:broadcast_unread)
     allow(UserChannel).to receive(:broadcast_progress)
+    allow(CompletionMonitor).to receive(:start).and_return(instance_double(CompletionMonitor, stop_requested?: false, stop: nil))
   end
 
   it 'broadcasts the busy indicator on start and finish' do
@@ -70,5 +71,37 @@ RSpec.describe ConversationCompactionJob, type: :job do
 
     expect(conversation.reload.unread).to be true
     expect(UserChannel).to have_received(:broadcast_unread).with(conversation, unread: true)
+  end
+
+  it 'marks the conversation alive while compacting and idle after finishing' do
+    alive_during = nil
+    allow(ConversationCompactionService).to receive(:perform) do |conv, *_args|
+      alive_during = Conversation.find(conversation.id).completion_alive?
+      true
+    end
+
+    described_class.perform_now(conversation.id)
+
+    expect(alive_during).to be true
+    expect(conversation.reload.completion_alive?).to be false
+  end
+
+  it 'enqueues a completion when a message was queued during compaction' do
+    allow(ConversationCompactionService).to receive(:perform).and_return(true)
+    conversation.messages.create!(role: 'user', content: 'queued while compacting', queued: true)
+
+    expect { described_class.perform_now(conversation.id) }.to have_enqueued_job(ConversationCompletionJob).with(conversation.id)
+
+    expect(conversation.messages.reload.where(queued: true).count).to eq(0)
+    expect(conversation.messages.where(content: 'queued while compacting', queued: false).count).to eq(1)
+    expect(UserChannel).not_to have_received(:broadcast_progress).with(conversation, active: false)
+  end
+
+  it 'broadcasts the inactive progress when nothing was queued' do
+    allow(ConversationCompactionService).to receive(:perform).and_return(true)
+
+    described_class.perform_now(conversation.id)
+
+    expect(UserChannel).to have_received(:broadcast_progress).with(conversation, active: false)
   end
 end

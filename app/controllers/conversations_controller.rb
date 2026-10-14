@@ -158,6 +158,10 @@ class ConversationsController < ApplicationController
       render_conversation_error('Nothing to compact yet.', :unprocessable_content)
       return
     end
+    if conversation.completion_alive?
+      render_conversation_error('Conversation is busy.', :unprocessable_content)
+      return
+    end
 
     apply_conversation_settings(conversation, model)
     ConversationCompactionJob.perform_later(conversation.id)

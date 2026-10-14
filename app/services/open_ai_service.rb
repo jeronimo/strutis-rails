@@ -66,7 +66,7 @@ class OpenAiService
     tool_calls = ToolCallAccumulator.new
     stopped = false
     begin
-      stream_request(body, timing, usage, should_stop, on_retry) do |delta|
+      stream_request(body, timing, usage, should_stop:, on_retry:) do |delta|
         if delta[:content] && !delta[:content].empty?
           content << delta[:content]
           yield delta[:content] if block_given?
@@ -97,7 +97,7 @@ class OpenAiService
     body
   end
 
-  def stream_request(body, timing, usage, should_stop, on_retry)
+  def stream_request(body, timing, usage, should_stop:, on_retry:)
     parser = SseParser.new
     first_content = nil
 

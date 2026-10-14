@@ -5,6 +5,8 @@ export default class extends Controller {
   static values = { seconds: { type: Number, default: 0 } }
 
   connect() {
+    if (!this.hasCountTarget) return
+
     this.remaining = this.secondsValue
     this.render()
     this.timer = setInterval(() => this.tick(), 1000)
