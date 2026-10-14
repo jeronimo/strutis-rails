@@ -32,7 +32,8 @@ class ConversationChannel < ApplicationCable::Channel
 
   def self.broadcast_error(conversation)
     html = conversation.last_error.present? ? ApplicationController.render(partial: 'conversations/error', locals: { error: conversation.last_error }) : ''
-    broadcast_replace_to conversation, target: "conversation-frame-error-#{conversation.public_id}", html:
+    broadcast_replace_to conversation, target: "conversation-frame-error-#{conversation.public_id}", html: html
+    broadcast_replace_to conversation, target: 'conversation-error', html: ''
   end
 
   def self.broadcast_title(conversation)

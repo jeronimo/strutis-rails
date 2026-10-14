@@ -6,6 +6,7 @@ RSpec.describe ConversationCompactionJob, type: :job do
 
   before do
     allow(ConversationChannel).to receive(:broadcast_frame)
+    allow(ConversationChannel).to receive(:broadcast_error)
     allow(UserChannel).to receive(:broadcast_unread)
     allow(UserChannel).to receive(:broadcast_progress)
     allow(CompletionMonitor).to receive(:start).and_return(instance_double(CompletionMonitor, stop_requested?: false, stop: nil))

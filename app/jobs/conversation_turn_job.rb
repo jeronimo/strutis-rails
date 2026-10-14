@@ -2,6 +2,8 @@ class ConversationTurnJob < ApplicationJob
   private
 
   def with_turn(conversation)
+    conversation.update_column(:last_error, nil)
+    ConversationChannel.broadcast_error(conversation)
     conversation.mark_completion_running!
     @monitor = CompletionMonitor.start(conversation)
     UserChannel.broadcast_progress(conversation, active: true)

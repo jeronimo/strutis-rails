@@ -23,8 +23,6 @@ class ConversationCompletionJob < ConversationTurnJob
 
   def run_turn
     @openai = @conversation.open_ai_service
-    @conversation.update_column(:last_error, nil)
-    ConversationChannel.broadcast_error(@conversation)
     ConversationChannel.broadcast_progress(@conversation, active: true)
     begin
       run_completion
