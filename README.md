@@ -2,7 +2,7 @@
 
 ## Ruby version
 
-4.0.6 (see `.ruby-version`)
+4.0.9 (see `.ruby-version`)
 
 ## Setup
 
