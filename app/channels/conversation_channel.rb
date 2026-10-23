@@ -20,9 +20,17 @@ class ConversationChannel < ApplicationCable::Channel
       partial: 'conversations/message', locals: { message: }
   end
 
-  def self.broadcast_progress(conversation, active:)
+  def self.broadcast_progress(conversation, active:, retry_status: nil)
     broadcast_replace_to conversation, target: "conversation-progress-#{conversation.public_id}",
-      partial: 'conversations/progress', locals: { conversation:, active: }
+      partial: 'conversations/progress', locals: { conversation:, active:, retry_status: }
+  end
+
+  def self.broadcast_retry(conversation, attempt:, max:, wait:)
+    broadcast_progress(conversation, active: true, retry_status: { attempt:, max:, wait: })
+  end
+
+  def self.broadcast_retry_clear(conversation)
+    broadcast_progress(conversation, active: true)
   end
 
   def self.broadcast_context_usage(conversation)
@@ -40,13 +48,6 @@ class ConversationChannel < ApplicationCable::Channel
     title = ERB::Util.html_escape(conversation.title.presence || 'Untitled')
     broadcast_replace_to conversation, target: "conversation-title-#{conversation.public_id}", html: title
     broadcast_replace_to conversation, target: 'conversation-drawer-title', html: title
-  end
-
-  def self.broadcast_retry(conversation, attempt:, max:, wait:)
-    broadcast_replace_to conversation,
-      target: "conversation-progress-status-#{conversation.public_id}",
-      partial: 'conversations/retry_status',
-      locals: { conversation:, attempt:, max:, wait: }
   end
 
   def subscribed

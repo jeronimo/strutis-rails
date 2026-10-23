@@ -10,6 +10,7 @@ class ConversationCompletionJob < ConversationTurnJob
     @failure = nil
     @stopped = false
     @message = nil
+    @retry_pending = false
     with_turn(@conversation) { run_turn }
     if drain_queued_messages
       self.class.perform_later(@conversation.id)
@@ -37,6 +38,7 @@ class ConversationCompletionJob < ConversationTurnJob
 
   def run_completion
     tools = @openai.tools(on_retry: method(:notify_retry))
+    clear_retry
     metrics = { prompt_tokens: 0, completion_tokens: 0, reasoning_tokens: 0, latency_ms: 0, inference_ms: 0 }
     turns = 0
     loop do
@@ -80,6 +82,7 @@ class ConversationCompletionJob < ConversationTurnJob
         next if buffer.blank?
         @message = @conversation.messages.create!(role: 'assistant', content: buffer, model: @conversation.model)
         ConversationChannel.broadcast_message(@conversation, @message)
+        clear_retry
         buffer.clear
         last_flush = monotonic
       else
@@ -91,6 +94,7 @@ class ConversationCompletionJob < ConversationTurnJob
         end
       end
     end
+    clear_retry
     broadcast_delta(buffer) if @message && buffer.present?
     if @message.nil? && result[:reasoning].present?
       @message = @conversation.messages.create!(role: 'assistant', content: '', reasoning: result[:reasoning], model: @conversation.model)
@@ -168,7 +172,14 @@ class ConversationCompletionJob < ConversationTurnJob
   end
 
   def notify_retry(attempt, max, wait)
+    @retry_pending = true
     ConversationChannel.broadcast_retry(@conversation, attempt:, max:, wait:)
+  end
+
+  def clear_retry
+    return unless @retry_pending
+    @retry_pending = false
+    ConversationChannel.broadcast_retry_clear(@conversation)
   end
 
   def stop_requested?
