@@ -11,8 +11,19 @@ class User < ApplicationRecord
   has_many :prompts, dependent: :destroy
   has_many :messages, through: :conversations
 
+  default_scope { where(deleted_at: nil) }
+  scope :with_deleted, -> { unscope(where: :deleted_at) }
+
   before_create { self.authentication_token = SecureRandom.hex(20) if authentication_token.blank? }
   before_create { self.public_id = SecureRandom.hex(16) }
+
+  def destroy
+    update_columns(deleted_at: Time.current)
+  end
+
+  def restore
+    update_columns(deleted_at: nil)
+  end
 
   def self.find_for_authentication(conditions)
     if conditions[:authentication_token].present?
