@@ -60,8 +60,27 @@ RSpec.describe ConversationCompletionJob, type: :job do
 
     expect(conversation.reload.last_error).to eq('Something went wrong. Please try again.')
     expect(conversation.reload.unread).to be true
-    expect(conversation.messages.where(role: 'assistant').last&.content).to eq('partial')
+    message = conversation.messages.where(role: 'assistant').last
+    expect(message.content).to eq('partial')
+    expect(message.latency_ms).to eq(0)
+    expect(ConversationChannel).to have_received(:replace_message).with(conversation, message)
     expect(ConversationChannel).to have_received(:broadcast_frame).at_least(:once)
+  end
+
+  it 're-renders the streamed assistant message as final when the turn is stopped' do
+    conversation.update!(context_tokens: 0)
+    conversation.messages.create!(role: 'user', content: 'new')
+    allow_any_instance_of(OpenAiService).to receive(:completion) do |_messages, _model, **_options, &block|
+      block&.call('partial ')
+      { content: 'partial answer', tool_calls: [], stopped: true, latency_ms: nil, inference_ms: nil }
+    end
+
+    described_class.perform_now(conversation.id)
+
+    message = conversation.messages.reload.where(role: 'assistant').last
+    expect(message.content).to eq('partial answer')
+    expect(message.latency_ms).to eq(0)
+    expect(ConversationChannel).to have_received(:replace_message).with(conversation, message)
   end
 
   it 'records a tool result for unexecuted tool calls when the turn fails' do

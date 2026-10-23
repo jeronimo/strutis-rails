@@ -23,6 +23,7 @@ class ConversationCompletionJob < ConversationTurnJob
   private
 
   def run_turn
+    @metrics = { prompt_tokens: 0, completion_tokens: 0, reasoning_tokens: 0, latency_ms: 0, inference_ms: 0 }
     @openai = @conversation.open_ai_service
     ConversationChannel.broadcast_progress(@conversation, active: true)
     begin
@@ -39,7 +40,6 @@ class ConversationCompletionJob < ConversationTurnJob
   def run_completion
     tools = @openai.tools(on_retry: method(:notify_retry))
     clear_retry
-    metrics = { prompt_tokens: 0, completion_tokens: 0, reasoning_tokens: 0, latency_ms: 0, inference_ms: 0 }
     turns = 0
     loop do
       if stop_requested?
@@ -58,14 +58,14 @@ class ConversationCompletionJob < ConversationTurnJob
         @message.update!(content: result[:content]) if @message && result[:content].present?
         break
       end
-      accumulate_metrics(metrics, result)
+      accumulate_metrics(result)
       record_context_tokens(result)
       if result[:tool_calls].present? && !wrap_up
         record_tool_turn(result, tools)
         turns += 1
         next
       end
-      finalize(result, metrics)
+      finalize(result)
       break
     end
   end
@@ -135,23 +135,23 @@ class ConversationCompletionJob < ConversationTurnJob
     end
   end
 
-  def accumulate_metrics(metrics, result)
-    metrics[:prompt_tokens] += result[:prompt_tokens].to_i
-    metrics[:completion_tokens] += result[:completion_tokens].to_i
-    metrics[:reasoning_tokens] += result[:reasoning_tokens].to_i
-    metrics[:latency_ms] += result[:latency_ms].to_i
-    metrics[:inference_ms] += result[:inference_ms].to_i
+  def accumulate_metrics(result)
+    @metrics[:prompt_tokens] += result[:prompt_tokens].to_i
+    @metrics[:completion_tokens] += result[:completion_tokens].to_i
+    @metrics[:reasoning_tokens] += result[:reasoning_tokens].to_i
+    @metrics[:latency_ms] += result[:latency_ms].to_i
+    @metrics[:inference_ms] += result[:inference_ms].to_i
   end
 
-  def finalize(result, metrics)
+  def finalize(result)
     if @message
-      @message.update!(content: result[:content], reasoning: result[:reasoning], latency_ms: metrics[:latency_ms], inference_ms: metrics[:inference_ms],
-        prompt_tokens: metrics[:prompt_tokens], completion_tokens: metrics[:completion_tokens],
-        reasoning_tokens: metrics[:reasoning_tokens])
+      @message.update!(content: result[:content], reasoning: result[:reasoning], latency_ms: @metrics[:latency_ms], inference_ms: @metrics[:inference_ms],
+        prompt_tokens: @metrics[:prompt_tokens], completion_tokens: @metrics[:completion_tokens],
+        reasoning_tokens: @metrics[:reasoning_tokens])
       @finalized = true
       @conversation.mark_unread!
       if result[:content].blank? && result[:reasoning].present?
-        @conversation.last_error = ConversationError.thinking_only(metrics[:latency_ms])
+        @conversation.last_error = ConversationError.thinking_only(@metrics[:latency_ms])
         @conversation.update_column(:last_error, @conversation.last_error)
         ConversationChannel.broadcast_error(@conversation)
       end
@@ -193,6 +193,10 @@ class ConversationCompletionJob < ConversationTurnJob
   def finish_failed_turn
     return if @finalized
     record_unexecuted_tools
+    if @message&.content.present?
+      @message.update!(latency_ms: @metrics[:latency_ms], inference_ms: @metrics[:inference_ms])
+      ConversationChannel.replace_message(@conversation, @message)
+    end
     @conversation.last_error = ConversationError.from_failure(stopped: @stopped, failure: @failure)
     @conversation.update_column(:last_error, @conversation.last_error)
     @conversation.mark_unread!

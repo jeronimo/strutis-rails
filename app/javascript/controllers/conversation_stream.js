@@ -57,7 +57,7 @@ function applyStream(data) {
     const stream = new DOMParser().parseFromString(data, 'text/html').querySelector('turbo-stream[action="append"]')
     if (stream) {
       const target = document.getElementById(stream.getAttribute('target'))
-      if (target && target.dataset.final === 'true') return
+      if (target && target.hasAttribute('data-final')) return
     }
   }
   Turbo.renderStreamMessage(data)
